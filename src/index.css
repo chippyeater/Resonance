@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Noto Serif", serif;
+  --font-sans: "Work Sans", sans-serif;
+  
+  --color-brand-coral: #D2694E;
+  --color-brand-teal: #283F3E;
+  --color-brand-brown: #824E40;
+  --color-brand-cream: #F5F1E9;
+  --color-brand-ink: #283F3E;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-cream text-brand-ink font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .text-rail {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+}
