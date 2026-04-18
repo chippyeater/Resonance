@@ -19,19 +19,20 @@
  */
 :root {
   /* Text Role Sizes */
-  --size-brand-title: 22px;
-  --size-brand-subtitle: 10px;
-  --size-heading-panel: 20px;
-  --size-heading-assistant: 18px;
+  --size-brand-title: 28px;
+  --size-brand-subtitle: 12px;
+  --size-heading-panel: 22px;
+  --size-heading-assistant: 20px;
   --size-stat-primary: 28px;
   --size-stat-secondary: 16px;
-  --size-stat-label: 11px;
-  --size-ui-tab: 12px;
-  --size-ui-group: 12px;
-  --size-ui-control: 12px;
-  --size-ui-button: 11px;
+  --size-stat-label: 12px;
+  --size-ui-tab: 13px;
+  --size-ui-group: 14px;
+  --size-ui-control: 13px;
+  --size-ui-value: 12px;
+  --size-ui-button: 13px;
   --size-chat-message: 14px;
-  --size-nav-item: 10px;
+  --size-nav-item: 12px;
 
   /* Line Heights */
   --line-height-none: 1;
@@ -39,9 +40,9 @@
   --line-height-relaxed: 1.62;
 
   /* Tracking */
-  --tracking-tight: -0.025em;
+  --tracking-tight: -0.02em;
   --tracking-normal: 0em;
-  --tracking-wide: 0.025em;
+  --tracking-wide: 0.02em;
   --tracking-widest: 0.1em;
   --tracking-brand: 0.2em;
 }
@@ -51,14 +52,14 @@
   .text-brand-title {
     font-family: var(--font-serif);
     font-size: var(--size-brand-title);
-    font-weight: 900; /* black */
+    font-weight: 800; /* extra bold */
     line-height: var(--line-height-none);
     letter-spacing: var(--tracking-tight);
   }
   .text-brand-subtitle {
     font-family: var(--font-sans);
     font-size: var(--size-brand-subtitle);
-    font-weight: 700; /* bold */
+    font-weight: 500;
     letter-spacing: var(--tracking-brand);
   }
 
@@ -80,7 +81,7 @@
   .text-stat-value-primary {
     font-family: var(--font-serif);
     font-size: var(--size-stat-primary);
-    font-weight: 900;
+    font-weight: 800;
     line-height: var(--line-height-none);
   }
   .text-stat-value-secondary {
@@ -92,7 +93,7 @@
   .text-stat-label {
     font-family: var(--font-sans);
     font-size: var(--size-stat-label);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: var(--tracking-widest);
   }
 
@@ -100,7 +101,7 @@
   .text-ui-tab {
     font-family: var(--font-sans);
     font-size: var(--size-ui-tab);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: var(--tracking-widest);
   }
   .text-ui-label-group {
@@ -112,27 +113,27 @@
   .text-ui-label-control {
     font-family: var(--font-sans);
     font-size: var(--size-ui-control);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: var(--tracking-widest);
     line-height: var(--line-height-none);
   }
   .text-ui-value-control {
     font-family: var(--font-sans);
-    font-size: var(--size-ui-control);
-    font-weight: 700;
+    font-size: var(--size-ui-value);
+    font-weight: 600;
     line-height: var(--line-height-none);
   }
   .text-ui-button {
     font-family: var(--font-sans);
     font-size: var(--size-ui-button);
-    font-weight: 700;
+    font-weight: 600;
     line-height: var(--line-height-tight);
-    /* For compact items, it inherits general tracking */
+    letter-spacing: var(--tracking-wide);
   }
   .text-nav-item {
     font-family: var(--font-sans);
     font-size: var(--size-nav-item);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: var(--tracking-widest);
   }
 
@@ -149,6 +150,9 @@
 }
 
 @layer base {
+  html, body, #root {
+    @apply w-full h-full overflow-hidden m-0 p-0;
+  }
   body {
     @apply bg-brand-cream text-brand-ink font-sans antialiased;
   }

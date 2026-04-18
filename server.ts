@@ -133,10 +133,15 @@ app.post('/api/chat', async (req, res) => {
       replyText = choice.content || "";
       
       if (choice.tool_calls && choice.tool_calls.length > 0) {
-        replyFunctionCalls = choice.tool_calls.map(tc => ({
-          name: tc.function.name,
-          args: JSON.parse(tc.function.arguments)
-        }));
+        replyFunctionCalls = choice.tool_calls
+          .filter(tc => tc.type === 'function')
+          .map(tc => {
+            const funcTc = tc as any;
+            return {
+              name: funcTc.function.name,
+              args: JSON.parse(funcTc.function.arguments)
+            };
+          });
       }
     }
 

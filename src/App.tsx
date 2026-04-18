@@ -372,6 +372,9 @@ const TableCanvas = ({ params }: { params: TableParams }) => {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
+    
+    // Clear any existing canvases (e.g. from React strict mode double render or HMR)
+    containerRef.current.innerHTML = '';
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -424,8 +427,9 @@ const TableCanvas = ({ params }: { params: TableParams }) => {
     tableGroupRef.current = tableGroup;
 
     // Animation loop
+    let animationFrameId: number;
     const animate = () => {
-      requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
     };
@@ -445,9 +449,11 @@ const TableCanvas = ({ params }: { params: TableParams }) => {
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
       renderer.dispose();
-      if (containerRef.current) {
+      // Safely remove the canvas if it still exists in the container
+      if (containerRef.current && renderer.domElement && containerRef.current.contains(renderer.domElement)) {
         containerRef.current.removeChild(renderer.domElement);
       }
     };
@@ -626,7 +632,7 @@ const TableCanvas = ({ params }: { params: TableParams }) => {
 
 // --- UI Components ---
 
-const glassPanel = "bg-white/40 border border-[#E3BEB8]/30 backdrop-blur-[10px] rounded-[15px]";
+const glassPanel = "bg-white/60 border border-white/50 backdrop-blur-xl rounded-[20px] shadow-[0_8px_32px_rgba(110,0,0,0.08)]";
 
 const CustomSlider = ({ 
   label, 
@@ -649,19 +655,19 @@ const CustomSlider = ({
 }) => (
   <div className="w-full flex flex-col gap-3">
     <div className="flex justify-between items-end w-full">
-      <label className="text-ui-label-control text-[#6E0000]">{label}</label>
-      <span className="text-ui-value-control text-[#6E0000]">{(value * displayMul).toFixed(displayMul === 1 ? 2 : 0)}{unit}</span>
+      <label className="text-ui-label-control text-[#6E0000] font-medium">{label}</label>
+      <span className="text-ui-value-control text-[#6E0000]/80">{(value * displayMul).toFixed(displayMul === 1 ? 2 : 0)}{unit}</span>
     </div>
-    <div className="relative h-3 flex items-center w-full">
-      <div className="absolute w-full h-[3px] bg-[#E7E2D9] rounded-full" />
+    <div className="relative h-4 flex items-center w-full">
+      <div className="absolute w-full h-[4px] bg-[#E3BEB8]/40 rounded-full" />
       <input 
         type="range" min={min} max={max} step={step} value={value} 
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="absolute w-full h-full opacity-0 cursor-pointer z-10"
       />
       <div 
-        className="absolute w-3.5 h-3.5 bg-[#6E0000] rounded-full shadow-sm pointer-events-none transition-transform"
-        style={{ left: `calc(${((value - min) / (max - min)) * 100}% - 7px)` }}
+        className="absolute w-4 h-4 bg-[#6E0000] rounded-full shadow-[0_2px_4px_rgba(110,0,0,0.3)] pointer-events-none transition-transform"
+        style={{ left: `calc(${((value - min) / (max - min)) * 100}% - 8px)` }}
       />
     </div>
   </div>
@@ -780,25 +786,25 @@ export default function App() {
       </div>
 
       {/* Header Overlay */}
-      <div className={cn(glassPanel, "absolute left-[32px] top-[32px] w-[340px] h-[74px] flex items-center px-6 gap-4 z-50 shadow-sm")}>
-        <div className="w-10 h-10 bg-[#6E0000] rounded-full flex justify-center items-center shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
-          <Compass className="w-5 h-5 text-white" />
+      <div className={cn(glassPanel, "absolute left-[24px] top-[24px] min-w-[320px] h-[72px] flex items-center px-5 gap-4 z-50")}>
+        <div className="w-[42px] h-[42px] bg-gradient-to-br from-[#6E0000] to-[#8C1616] rounded-[12px] flex justify-center items-center shadow-[0_8px_16px_-4px_rgba(110,0,0,0.4)]">
+          <Compass className="w-[20px] h-[20px] text-[#FEF9F0]" strokeWidth={2.5} />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-brand-title text-[#1D1C16] pt-1">明造工坊</h1>
-          <span className="text-brand-subtitle text-[#6E0000] mt-1.5 opacity-80">文人书房 · 榫卯定制</span>
+          <h1 className="text-brand-title text-[#1D1C16]">明造工坊</h1>
+          <span className="text-brand-subtitle text-[#6E0000]/60 mt-0.5">文人书房 · 榫卯定制</span>
         </div>
       </div>
 
       {/* Customizer Panel */}
-      <div className={cn(glassPanel, "absolute left-[32px] top-[122px] bottom-[134px] w-[340px] p-6 flex flex-col gap-6 z-40 shadow-sm")}>
+      <div className={cn(glassPanel, "absolute left-[24px] top-[112px] bottom-[116px] w-[340px] p-6 flex flex-col gap-5 z-40")}>
         <div className="flex items-center gap-2 shrink-0">
           <div className="text-[#6E0000]"><Compass className="w-4 h-4" strokeWidth={2.5} /></div>
           <h2 className="text-heading-panel text-[#1D1C16]">定制参数</h2>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-white/50 rounded-[12px] p-1 h-10 items-center w-full justify-between shrink-0 border border-[#E3BEB8]/30 shadow-inner">
+        <div className="flex bg-white/70 rounded-[12px] p-1 h-[40px] items-center w-full justify-between shrink-0 border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)]">
            {[
              { id: 'DIMENSION', label: '基础尺寸' },
              { id: 'FRAME', label: '架构造法' },
@@ -808,10 +814,10 @@ export default function App() {
              <button 
                key={tab.id}
                onClick={() => setLeftTab(tab.id)}
-               className={cn("text-ui-tab flex-1 rounded-[8px] h-full transition-all", 
-                 leftTab === tab.id ? "bg-[#6E0000] text-white shadow-md shadow-[#6E0000]/20" : "text-[#6E0000]/70 hover:bg-white/40 hover:text-[#6E0000]")}
+               className={cn("flex-1 rounded-[8px] h-full transition-all flex items-center justify-center", 
+                 leftTab === tab.id ? "bg-[#6E0000] text-white shadow-md shadow-[#6E0000]/25" : "text-[#6E0000]/60 hover:bg-white/60 hover:text-[#6E0000]")}
              >
-               {tab.label}
+               <span className="text-ui-tab">{tab.label}</span>
              </button>
            ))}
         </div>
@@ -849,7 +855,7 @@ export default function App() {
                         const labelMap: Record<LegFamily, string> = { 'straight': '直腿', 'hoof': '马蹄', 'curved': '三弯腿' };
                         return (
                           <button key={fam} onClick={() => setParams(p => ({...p, legFamily: fam}))}
-                            className={cn("text-ui-button flex-1 py-1.5 rounded-lg border transition-colors", params.legFamily === fam ? "bg-[#6E0000] text-white border-[#6E0000] shadow-md shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
+                            className={cn("text-ui-button flex-1 py-1.5 rounded-[8px] border transition-colors", params.legFamily === fam ? "bg-[#6E0000] text-white border-[#6E0000] shadow-sm shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
                             {labelMap[fam]}
                           </button>
                         );
@@ -860,7 +866,7 @@ export default function App() {
                         const labelMap: Record<LegSection, string> = { 'square': '方材', 'round': '圆材' };
                         return (
                           <button key={sec} onClick={() => setParams(p => ({...p, legSection: sec}))}
-                            className={cn("text-ui-button flex-1 py-1.5 rounded-lg border transition-colors", params.legSection === sec ? "bg-[#6E0000] text-white border-[#6E0000] shadow-md shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
+                            className={cn("text-ui-button flex-1 py-1.5 rounded-[8px] border transition-colors", params.legSection === sec ? "bg-[#6E0000] text-white border-[#6E0000] shadow-sm shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
                             {labelMap[sec]}
                           </button>
                         );
@@ -881,7 +887,7 @@ export default function App() {
            )}
            {leftTab === 'FINISH' && (
              <div className="flex flex-col gap-5 mt-1">
-                <div className="flex flex-col gap-3">
+                 <div className="flex flex-col gap-3">
                    <span className="text-ui-label-group text-[#6E0000]">木料选择</span>
                    <div className="grid grid-cols-2 gap-3">
                       {(['black-walnut', 'traditional-rosewood'] as WoodType[]).map((type) => {
@@ -891,14 +897,14 @@ export default function App() {
                             key={type}
                             onClick={() => setParams(p => ({ ...p, woodType: type }))}
                             className={cn(
-                              "flex flex-col items-center justify-center p-3 border transition-all rounded-[12px]",
+                              "flex flex-col items-center justify-center py-2 px-1 border transition-all rounded-[8px]",
                               params.woodType === type 
-                                ? "border-[#6E0000] bg-[#6E0000] text-white shadow-md shadow-[#6E0000]/20" 
+                                ? "border-[#6E0000] bg-[#6E0000] text-white shadow-sm shadow-[#6E0000]/20" 
                                 : "border-[#E3BEB8]/50 bg-white/50 text-[#6E0000]/70 hover:border-[#6E0000]/30 hover:text-[#6E0000]"
                             )}
                           >
-                            <div className={cn("w-10 h-10 rounded-full mb-2 shadow-inner", params.woodType === type ? "border-2 border-white/80" : "border border-black/10", type === 'black-walnut' ? "bg-[#3D2B1F]" : "bg-[#5C1A1A]")} />
-                            <span className="text-ui-button tracking-tight text-center h-6 flex items-center">
+                            <div className={cn("w-6 h-6 rounded-full mb-1.5 shadow-inner", params.woodType === type ? "border-2 border-white/80" : "border border-black/10", type === 'black-walnut' ? "bg-[#3D2B1F]" : "bg-[#5C1A1A]")} />
+                            <span className="text-ui-button tracking-tight text-center flex items-center">
                               {labelMap[type]}
                             </span>
                           </button>
@@ -915,7 +921,7 @@ export default function App() {
                         <button
                           key={l}
                           onClick={() => setParams(p => ({ ...p, lustre: l }))}
-                          className={cn("text-ui-button flex-1 py-1.5 rounded-lg border transition-colors", params.lustre === l ? "bg-[#6E0000] text-white border-[#6E0000] shadow-md shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}
+                          className={cn("text-ui-button flex-1 py-1.5 rounded-[8px] border transition-colors", params.lustre === l ? "bg-[#6E0000] text-white border-[#6E0000] shadow-sm shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}
                         >
                           {l === 'matte-silk' ? '擦蜡 / 哑光' : '生漆 / 高光'}
                         </button>
@@ -928,20 +934,20 @@ export default function App() {
       </div>
 
       {/* Price Card */}
-      <div className={cn(glassPanel, "absolute left-[32px] bottom-[32px] w-[340px] h-[86px] flex items-center px-6 justify-between z-40 shadow-sm")}>
+      <div className={cn(glassPanel, "absolute left-[24px] bottom-[24px] w-[340px] h-[76px] flex items-center px-6 justify-between z-40")}>
         <div className="flex flex-col items-start justify-center flex-1">
-          <span className="text-stat-label text-[#6E0000]/70 mb-1">当前预估价格</span>
-          <span className="text-stat-value-primary text-[#1D1C16] mb-0.5">¥12,400</span>
+          <span className="text-stat-label text-[#6E0000]/50 mb-0.5">当前预估价格</span>
+          <span className="text-stat-value-primary text-[#1D1C16] tracking-tight">¥12,400</span>
         </div>
-        <div className="w-[1px] h-[40px] bg-[#E3BEB8]/50 mx-4" />
+        <div className="w-[1px] h-[36px] bg-[#E3BEB8]/60 mx-4" />
         <div className="flex flex-col items-start justify-center flex-1 pl-2">
-          <span className="text-stat-label text-[#6E0000]/70 mb-1">制作周期</span>
-          <span className="text-stat-value-secondary text-[#6E0000] mb-0.5">14-18 个工作日</span>
+          <span className="text-stat-label text-[#6E0000]/50 mb-0.5">制作周期</span>
+          <span className="text-stat-value-secondary text-[#6E0000]">14-18 个工作日</span>
         </div>
       </div>
 
       {/* Scholar Assistant Panel */}
-      <div className={cn(glassPanel, "absolute right-[32px] top-[32px] bottom-[32px] w-[384px] flex flex-col p-6 z-40")}>
+      <div className={cn(glassPanel, "absolute right-[24px] top-[24px] bottom-[24px] w-[360px] flex flex-col p-6 z-40")}>
         <div className="flex items-center gap-4 mb-8 shrink-0 pb-2">
           <div className="w-12 h-12 bg-white rounded-full flex justify-center items-center shrink-0 shadow-sm">
             <Sparkles className="w-[22px] h-[22px] text-[#6E0000]" strokeWidth={2.5} />
@@ -988,42 +994,42 @@ export default function App() {
           <div ref={chatEndRef} />
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="relative shrink-0 mt-2">
+        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="relative shrink-0 mt-3">
           <input 
             type="text"
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             disabled={isTyping}
             placeholder="询问关于形制、材质或设计建议..."
-            className="text-chat-input w-full h-[52px] bg-[#E7E2D9]/50 rounded-full pl-6 pr-14 text-[#6E0000] placeholder:text-[#6E0000] outline-none focus:ring-1 focus:ring-[#6E0000]/30 transition-all"
+            className="text-chat-input w-full h-[50px] bg-[#E7E2D9]/60 rounded-full pl-5 pr-12 text-[#6E0000] placeholder:text-[#6E0000]/60 outline-none focus:ring-2 focus:ring-[#6E0000]/30 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
           />
           <button 
             type="submit"
             disabled={isTyping || !inputValue.trim()}
-            className="absolute right-2 top-1.5 w-10 h-10 bg-[#6E0000] rounded-full flex justify-center items-center shadow-lg disabled:opacity-50 hover:scale-105 active:scale-95 transition-all"
+            className="absolute right-1.5 top-1.5 w-[38px] h-[38px] bg-gradient-to-br from-[#6E0000] to-[#8C1616] rounded-full flex justify-center items-center shadow-[0_2px_6px_rgba(110,0,0,0.2)] disabled:opacity-50 hover:scale-105 active:scale-95 transition-all"
           >
-            <Send className="w-4 h-4 text-white ml-0.5" />
+            <Send className="w-[16px] h-[16px] text-white ml-0.5" />
           </button>
         </form>
       </div>
 
       {/* Bottom Navbar */}
-      <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2 bg-white/60 border border-white/20 backdrop-blur-[9.6px] shadow-[0_16px_40px_rgba(0,0,0,0.1)] rounded-[12px] p-2 flex items-center gap-1 z-50">
-        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] bg-[#991B1B] rounded-[12px] text-white shadow-[0_8px_12px_-2.4px_rgba(0,0,0,0.1)] transition-transform">
-           <Palette className="w-[14px] h-[14px] mb-[3px]" />
-           <span className="text-nav-item">设计</span>
+      <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2 bg-white/70 border border-white/60 backdrop-blur-xl shadow-[0_16px_40px_rgba(110,0,0,0.08)] rounded-[16px] p-2 flex items-center gap-1 z-50">
+        <button className="flex flex-col items-center justify-center w-[86px] h-[54px] bg-gradient-to-b from-[#8C1616] to-[#6E0000] rounded-[12px] text-white shadow-[0_4px_12px_-2px_rgba(110,0,0,0.3)] transition-transform hover:scale-105 active:scale-95">
+           <Palette className="w-[16px] h-[16px] mb-1" />
+           <span className="text-nav-item opacity-90">设计</span>
         </button>
-        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] rounded-[12px] text-[#57534E] hover:bg-white/40 transition-colors">
-           <MessageCircle className="w-[14px] h-[14px] mb-[3px]" />
-           <span className="text-nav-item">咨询</span>
+        <button className="flex flex-col items-center justify-center w-[86px] h-[54px] rounded-[12px] text-[#57534E] hover:bg-white/60 hover:text-[#6E0000] transition-colors">
+           <MessageCircle className="w-[16px] h-[16px] mb-1" />
+           <span className="text-nav-item opacity-80">咨询</span>
         </button>
-        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] rounded-[12px] text-[#57534E] hover:bg-white/40 transition-colors">
-           <LayoutGrid className="w-[14px] h-[14px] mb-[3px]" />
-           <span className="text-nav-item">展厅</span>
+        <button className="flex flex-col items-center justify-center w-[86px] h-[54px] rounded-[12px] text-[#57534E] hover:bg-white/60 hover:text-[#6E0000] transition-colors">
+           <LayoutGrid className="w-[16px] h-[16px] mb-1" />
+           <span className="text-nav-item opacity-80">展厅</span>
         </button>
-        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] rounded-[12px] text-[#57534E] hover:bg-white/40 transition-colors">
-           <ShoppingBag className="w-[14px] h-[14px] mb-[3px]" />
-           <span className="text-nav-item">清单</span>
+        <button className="flex flex-col items-center justify-center w-[86px] h-[54px] rounded-[12px] text-[#57534E] hover:bg-white/60 hover:text-[#6E0000] transition-colors">
+           <ShoppingBag className="w-[16px] h-[16px] mb-1" />
+           <span className="text-nav-item opacity-80">清单</span>
         </button>
       </div>
       
