@@ -941,7 +941,7 @@ export default function App() {
       </div>
 
       {/* Scholar Assistant Panel */}
-      <div className={cn(glassPanel, "absolute right-[32px] top-1/2 -translate-y-1/2 -mt-[20px] w-[384px] h-[666px] flex flex-col p-6 z-40")}>
+      <div className={cn(glassPanel, "absolute right-[32px] top-[32px] bottom-[32px] w-[384px] flex flex-col p-6 z-40")}>
         <div className="flex items-center gap-4 mb-8 shrink-0 pb-2">
           <div className="w-12 h-12 bg-white rounded-full flex justify-center items-center shrink-0 shadow-sm">
             <Sparkles className="w-[22px] h-[22px] text-[#6E0000]" strokeWidth={2.5} />
