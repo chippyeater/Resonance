@@ -19,7 +19,14 @@ import {
   ChevronLeft,
   Check,
   Send,
-  Loader2
+  Loader2,
+  Compass,
+  Sparkles,
+  Palette,
+  MessageCircle,
+  LayoutGrid,
+  ShoppingBag,
+  UserCircle
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import confetti from 'canvas-confetti';
@@ -344,7 +351,7 @@ const TableCanvas = ({ params }: { params: TableParams }) => {
 
     // Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#F5F1E9');
+    scene.background = new THREE.Color('#FEF9F0');
     sceneRef.current = scene;
 
     // Camera setup
@@ -619,15 +626,7 @@ const TableCanvas = ({ params }: { params: TableParams }) => {
 
 // --- UI Components ---
 
-const SidebarSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="mb-10 p-6 bg-white rounded-[20px] border border-brand-coral/10 shadow-sm">
-    <h3 className="text-[11px] font-bold tracking-[0.15em] text-brand-coral uppercase mb-6 flex items-center">
-      <span className="w-1.5 h-1.5 bg-brand-coral rounded-full mr-2" />
-      {title}
-    </h3>
-    {children}
-  </div>
-);
+const glassPanel = "bg-white/40 border border-[#E3BEB8]/30 backdrop-blur-[10px] rounded-[15px]";
 
 const CustomSlider = ({ 
   label, 
@@ -636,6 +635,7 @@ const CustomSlider = ({
   max, 
   unit, 
   step = 1,
+  displayMul = 1,
   onChange 
 }: { 
   label: string; 
@@ -644,31 +644,24 @@ const CustomSlider = ({
   max: number; 
   unit: string;
   step?: number;
+  displayMul?: number;
   onChange: (val: number) => void;
 }) => (
-  <div className="mb-6">
-    <div className="flex justify-between items-baseline mb-2">
-      <label className="text-[10px] font-bold tracking-wider text-brand-ink/60 uppercase">{label}</label>
-      <span className="text-xs font-medium text-brand-coral">{value.toFixed(2)} {unit}</span>
+  <div className="w-full flex flex-col gap-3">
+    <div className="flex justify-between items-end w-full">
+      <label className="text-[10px] font-bold tracking-widest text-[#6E0000] font-sans leading-none">{label}</label>
+      <span className="text-[12px] font-bold text-[#6E0000] font-sans leading-none">{(value * displayMul).toFixed(displayMul === 1 ? 2 : 0)}{unit}</span>
     </div>
-    <div className="relative h-4 flex items-center">
-      <div className="absolute w-full h-[2px] bg-brand-coral/10 rounded-full" />
+    <div className="relative h-3 flex items-center w-full">
+      <div className="absolute w-full h-[3px] bg-[#E7E2D9] rounded-full" />
       <input 
-        type="range" 
-        min={min} 
-        max={max} 
-        step={step}
-        value={value} 
+        type="range" min={min} max={max} step={step} value={value} 
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="absolute w-full h-full opacity-0 cursor-pointer z-10"
       />
       <div 
-        className="absolute h-[2px] bg-brand-coral rounded-full transition-all duration-150" 
-        style={{ width: `${((value - min) / (max - min)) * 100}%` }}
-      />
-      <div 
-        className="absolute w-3 h-3 bg-brand-coral rounded-full transition-all duration-150 shadow-sm"
-        style={{ left: `calc(${((value - min) / (max - min)) * 100}% - 6px)` }}
+        className="absolute w-3.5 h-3.5 bg-[#6E0000] rounded-full shadow-sm pointer-events-none transition-transform"
+        style={{ left: `calc(${((value - min) / (max - min)) * 100}% - 7px)` }}
       />
     </div>
   </div>
@@ -678,6 +671,7 @@ const CustomSlider = ({
 
 export default function App() {
   const [params, setParams] = useState<TableParams>(DEFAULTS);
+  const [leftTab, setLeftTab] = useState('DIMENSION');
   const [activeTab, setActiveTab] = useState<'parameters' | 'chat'>('chat');
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isPricePanelOpen, setIsPricePanelOpen] = useState(false);
@@ -697,7 +691,7 @@ export default function App() {
   
   // Chat State
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
-    { role: 'assistant', content: "Welcome to Resonance. I am your design consultant. How can I help you customize your bespoke furniture today?" }
+    { role: 'assistant', content: "欢迎来到明造工坊。我是您的专属营造顾问，今天想了解或定制什么样的明式家具？" }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -753,15 +747,15 @@ export default function App() {
             }
 
             setParams(prev => ({ ...prev, ...args }));
-            setMessages(prev => [...prev, { role: 'assistant', content: "I've updated the design parameters based on your request. How does the new configuration look?" }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: "我已经根据您的需求更新了家具的定制参数，现在的设计符合您的预期吗？" }]);
           }
         }
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.text || "I'm here to help with your design." }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: data.text || "我在这里协助您完成设计。" }]);
       }
     } catch (error) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I encountered an error processing your request. Please try again." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "抱歉，我在处理您的请求时遇到了问题，请重试。" }]);
     } finally {
       setIsTyping(false);
     }
@@ -779,481 +773,265 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-brand-cream selection:bg-brand-coral/10">
-      {/* Header */}
-      <header className="h-20 border-b border-brand-coral/10 flex items-center justify-between px-12 z-50 bg-brand-cream/80 backdrop-blur-md">
-        <div className="flex items-center gap-12">
-          <h1 className="font-serif text-2xl font-bold italic tracking-tight text-brand-coral">
-            Resonance.
-          </h1>
-          <nav className="hidden md:flex items-center gap-8">
-            {['首页', '设计理念', '作品集', '关于我们'].map((item) => (
-              <a 
-                key={item} 
-                href="#" 
-                className={cn(
-                  "text-[12px] font-medium tracking-widest uppercase transition-colors hover:text-brand-coral",
-                  item === '设计理念' ? "text-brand-coral" : "text-brand-ink/60"
-                )}
-              >
-                {item}
-              </a>
-            ))}
-          </nav>
+    <div className="relative w-full h-screen overflow-hidden bg-[#FEF9F0] selection:bg-[#6E0000]/10 font-sans">
+      {/* 3D Canvas Area */}
+      <div className="absolute inset-0 z-0">
+        <TableCanvas params={params} />
+      </div>
+
+      {/* Header Overlay */}
+      <div className={cn(glassPanel, "absolute left-[32px] top-[32px] w-[340px] h-[74px] flex items-center px-6 gap-4 z-50 shadow-sm")}>
+        <div className="w-10 h-10 bg-[#6E0000] rounded-full flex justify-center items-center shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+          <Compass className="w-5 h-5 text-white" />
         </div>
-        <div className="flex items-center gap-6">
-          <button className="p-2 hover:bg-brand-coral/5 rounded-full transition-colors">
-            <ShoppingCart className="w-5 h-5 text-brand-ink" />
-          </button>
-          <button className="p-2 hover:bg-brand-coral/5 rounded-full transition-colors">
-            <User className="w-5 h-5 text-brand-ink" />
-          </button>
+        <div className="flex flex-col">
+          <h1 className="font-serif font-black text-[24px] text-[#1D1C16] leading-none tracking-tight pt-1">明造工坊</h1>
+          <span className="font-sans font-bold text-[9px] text-[#6E0000] tracking-[0.25em] mt-1.5 opacity-80">文人书房 · 榫卯定制</span>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* 3D Canvas Area */}
-        <div className="flex-1 relative bg-brand-cream min-h-[50vh] md:min-h-0">
-          <TableCanvas params={params} />
-
-          {/* HUD Overlay for Parameter Changes */}
-          <AnimatePresence>
-            {latestChanges.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                onMouseEnter={stopHudTimer}
-                onMouseLeave={startHudTimer}
-                className="absolute top-6 right-6 z-50 bg-white/60 backdrop-blur-xl border border-white/60 shadow-2xl rounded-2xl p-5 min-w-[240px] max-h-[80vh] flex flex-col"
-              >
-                <div className="flex items-center gap-2 mb-4 shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-brand-coral animate-pulse" />
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-brand-ink/60">Parameters Updated</span>
-                </div>
-                <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2">
-                  {latestChanges.map((change, idx) => (
-                    <div key={idx} className="flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-brand-ink/40 uppercase tracking-wider">
-                        {formatParamName(change.key)}
-                      </span>
-                      <div className="flex items-center gap-2 text-xs font-medium font-mono">
-                        <span className="text-brand-ink/50 line-through">{formatParamValue(change.oldVal)}</span>
-                        <ChevronRight className="w-3 h-3 text-brand-coral" />
-                        <span className="text-brand-coral">{formatParamValue(change.newVal)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Floating Controls - Collapsible Price Panel on the Left */}
-          <div className="absolute bottom-12 left-0 z-40">
-            <motion.div 
-              initial={false}
-              animate={{ x: isPricePanelOpen ? 0 : -140 }}
-              className="relative flex items-center"
-            >
-              <div className="bg-white/95 backdrop-blur-xl border border-brand-coral/20 p-6 rounded-r-[32px] shadow-xl flex items-center gap-8 pl-12">
-                <div>
-                  <span className="text-[9px] font-bold text-brand-ink/40 uppercase tracking-widest block mb-1">Current Build Price</span>
-                  <span className="text-3xl font-serif font-bold text-brand-coral">¥12,800</span>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsPricePanelOpen(!isPricePanelOpen)}
-                className="absolute -right-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-brand-coral text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform z-50"
-              >
-                {isPricePanelOpen ? <ChevronLeft className="w-5 h-5" /> : <span className="text-lg font-serif font-bold">¥</span>}
-              </button>
-            </motion.div>
-          </div>
+      {/* Customizer Panel */}
+      <div className={cn(glassPanel, "absolute left-[32px] top-[122px] bottom-[134px] w-[340px] p-6 flex flex-col gap-6 z-40 shadow-sm")}>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-[#6E0000]"><Compass className="w-4 h-4" strokeWidth={2.5} /></div>
+          <h2 className="font-serif font-bold text-[22px] text-[#1D1C16]">定制参数</h2>
         </div>
 
-        {/* Sidebar */}
-        <aside className="w-full md:w-[420px] border-t md:border-t-0 md:border-l border-brand-coral/10 flex flex-col bg-white h-full shadow-2xl z-30">
-          <div className="p-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-            {/* Tabs */}
-            <div className="flex gap-2 mb-4 bg-brand-coral/5 p-1 rounded-full shrink-0">
-              <button 
-                onClick={() => setActiveTab('chat')}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-full text-[10px] font-bold tracking-widest uppercase transition-all",
-                  activeTab === 'chat' 
-                    ? "bg-brand-coral text-white shadow-md shadow-brand-coral/20" 
-                    : "text-brand-ink/60 hover:text-brand-ink"
-                )}
-              >
-                <MessageSquare className="w-3 h-3" />
-                AI Chat
-              </button>
-              <button 
-                onClick={() => setActiveTab('parameters')}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-full text-[10px] font-bold tracking-widest uppercase transition-all",
-                  activeTab === 'parameters' 
-                    ? "bg-brand-coral text-white shadow-md shadow-brand-coral/20" 
-                    : "text-brand-ink/60 hover:text-brand-ink"
-                )}
-              >
-                <Settings2 className="w-3 h-3" />
-                参数调节
-              </button>
-            </div>
+        {/* Tabs */}
+        <div className="flex bg-white/50 rounded-[12px] p-1 h-10 items-center w-full justify-between shrink-0 border border-[#E3BEB8]/30 shadow-inner">
+           {[
+             { id: 'DIMENSION', label: '基础尺寸' },
+             { id: 'FRAME', label: '架构造法' },
+             { id: 'LEGS', label: '腿足形制' },
+             { id: 'FINISH', label: '皮壳工艺' }
+           ].map(tab => (
+             <button 
+               key={tab.id}
+               onClick={() => setLeftTab(tab.id)}
+               className={cn("flex-1 text-[10px] font-bold tracking-widest rounded-[8px] h-full transition-all", 
+                 leftTab === tab.id ? "bg-[#6E0000] text-white shadow-md shadow-[#6E0000]/20" : "text-[#6E0000]/70 hover:bg-white/40 hover:text-[#6E0000]")}
+             >
+               {tab.label}
+             </button>
+           ))}
+        </div>
 
-            <AnimatePresence mode="wait">
-              {activeTab === 'parameters' ? (
-                <motion.div
-                  key="params"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <SidebarSection title="Dimensions">
-                    <CustomSlider 
-                      label="Length" 
-                      value={params.length} 
-                      min={0.8} 
-                      max={2.0} 
-                      step={0.01}
-                      unit="m" 
-                      onChange={(v) => setParams(p => ({ ...p, length: v }))}
-                    />
-                    <CustomSlider 
-                      label="Width" 
-                      value={params.width} 
-                      min={0.4} 
-                      max={1.0} 
-                      step={0.01}
-                      unit="m" 
-                      onChange={(v) => setParams(p => ({ ...p, width: v }))}
-                    />
-                    <CustomSlider 
-                      label="Height" 
-                      value={params.height} 
-                      min={0.5} 
-                      max={0.9} 
-                      step={0.01}
-                      unit="m" 
-                      onChange={(v) => setParams(p => ({ ...p, height: v }))}
-                    />
-                    <CustomSlider 
-                      label="Edge Curve" 
-                      value={params.edgeCurve} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, edgeCurve: v }))}
-                    />
-                  </SidebarSection>
-
-                  <SidebarSection title="Leg Configuration">
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {(['hoof', 'straight', 'curved'] as LegFamily[]).map((family) => (
-                        <button
-                          key={family}
-                          onClick={() => setParams(p => ({ ...p, legFamily: family }))}
-                          className={cn(
-                            "px-5 py-2 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all",
-                            params.legFamily === family 
-                              ? "bg-brand-coral text-white" 
-                              : "bg-brand-coral/10 text-brand-ink/60 hover:bg-brand-coral/20"
-                          )}
-                        >
-                          {family}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {(['square', 'round'] as LegSection[]).map((section) => (
-                        <button
-                          key={section}
-                          onClick={() => setParams(p => ({ ...p, legSection: section }))}
-                          className={cn(
-                            "px-5 py-2 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all",
-                            params.legSection === section 
-                              ? "bg-brand-coral text-white" 
-                              : "bg-brand-coral/10 text-brand-ink/60 hover:bg-brand-coral/20"
-                          )}
-                        >
-                          {section}
-                        </button>
-                      ))}
-                    </div>
-                    <CustomSlider 
-                      label="Thickness" 
-                      value={params.legThickness} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, legThickness: v }))}
-                    />
-                    {params.legFamily !== 'curved' && (
-                      <CustomSlider 
-                        label="Taper" 
-                        value={params.legTaper} 
-                        min={0} 
-                        max={1} 
-                        step={0.01}
-                        unit="" 
-                        onChange={(v) => setParams(p => ({ ...p, legTaper: v }))}
-                      />
-                    )}
-                    {params.legFamily === 'hoof' && (
-                      <CustomSlider 
-                        label="Hoof Intensity" 
-                        value={params.hoofIntensity} 
-                        min={0} 
-                        max={1} 
-                        step={0.01}
-                        unit="" 
-                        onChange={(v) => setParams(p => ({ ...p, hoofIntensity: v }))}
-                      />
-                    )}
-                    {params.legFamily === 'curved' && (
-                      <>
-                        <CustomSlider 
-                          label="Curve" 
-                          value={params.legCurve} 
-                          min={0} 
-                          max={1} 
-                          step={0.01}
-                          unit="" 
-                          onChange={(v) => setParams(p => ({ ...p, legCurve: v }))}
-                        />
-                        <CustomSlider 
-                          label="Balance" 
-                          value={params.curveBalance} 
-                          min={0} 
-                          max={1} 
-                          step={0.01}
-                          unit="" 
-                          onChange={(v) => setParams(p => ({ ...p, curveBalance: v }))}
-                        />
-                      </>
-                    )}
-                  </SidebarSection>
-
-                  <SidebarSection title="Frame & Waist">
-                    <CustomSlider 
-                      label="Frame Height" 
-                      value={params.frameHeight} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, frameHeight: v }))}
-                    />
-                    <CustomSlider 
-                      label="Waist Ratio" 
-                      value={params.waistHeight} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, waistHeight: v }))}
-                    />
-                    <CustomSlider 
-                      label="Waist Inset" 
-                      value={params.waistInset} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, waistInset: v }))}
-                    />
-                    <CustomSlider 
-                      label="Line Height" 
-                      value={params.waistLineHeight} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, waistLineHeight: v }))}
-                    />
-                    <CustomSlider 
-                      label="Line Depth" 
-                      value={params.waistLineDepth} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, waistLineDepth: v }))}
-                    />
-                  </SidebarSection>
-
-                  <SidebarSection title="Apron Details">
-                    <CustomSlider 
-                      label="Apron Ratio" 
-                      value={params.apronHeight} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, apronHeight: v }))}
-                    />
-                    <CustomSlider 
-                      label="Thickness" 
-                      value={params.apronThick} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, apronThick: v }))}
-                    />
-                    <CustomSlider 
-                      label="Arch Depth" 
-                      value={params.archDepth} 
-                      min={-1} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, archDepth: v }))}
-                    />
-                    <CustomSlider 
-                      label="Arch Shape" 
-                      value={params.archShape} 
-                      min={0} 
-                      max={1} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, archShape: v }))}
-                    />
-                  </SidebarSection>
-
-                  <SidebarSection title="Material & Finish">
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                      {(['black-walnut', 'traditional-rosewood'] as WoodType[]).map((type) => (
-                        <button
-                          key={type}
-                          onClick={() => setParams(p => ({ ...p, woodType: type }))}
-                          className={cn(
-                            "p-4 text-left border transition-all relative overflow-hidden group rounded-xl",
-                            params.woodType === type 
-                              ? "border-brand-coral bg-brand-coral text-white" 
-                              : "border-brand-coral/10 bg-white text-brand-ink/60 hover:border-brand-coral/30"
-                          )}
-                        >
-                          <span className="text-[11px] font-bold uppercase tracking-tight leading-tight">
-                            {type.replace('-', ' ')}
-                          </span>
-                          {params.woodType === type && (
-                            <Check className="absolute top-2 right-2 w-3 h-3 text-white" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                    <CustomSlider 
-                      label="Wood Tone" 
-                      value={params.woodLightness} 
-                      min={0.15} 
-                      max={0.75} 
-                      step={0.01}
-                      unit="" 
-                      onChange={(v) => setParams(p => ({ ...p, woodLightness: v }))}
-                    />
-                    <div className="flex justify-between items-center py-4 border-t border-brand-coral/10">
-                      <span className="text-[10px] font-bold tracking-widest text-brand-ink/40 uppercase">光泽度 (漆面)</span>
-                      <div className="flex gap-2">
-                        {(['matte-silk', 'high-gloss'] as const).map((l) => (
+        {/* Sliders Area */}
+        <div className="flex flex-col gap-6 flex-1 overflow-y-auto custom-scrollbar pr-3 pb-4">
+           {leftTab === 'DIMENSION' && (
+             <div className="flex flex-col gap-6 mt-1">
+               <CustomSlider label="长度" value={params.length} min={0.8} max={2.0} step={0.01} unit="cm" onChange={(v) => setParams(p => ({ ...p, length: v }))} displayMul={100} />
+               <CustomSlider label="宽度" value={params.width} min={0.4} max={1.0} step={0.01} unit="cm" onChange={(v) => setParams(p => ({ ...p, width: v }))} displayMul={100} />
+               <CustomSlider label="高度" value={params.height} min={0.5} max={0.9} step={0.01} unit="cm" onChange={(v) => setParams(p => ({ ...p, height: v }))} displayMul={100} />
+               <CustomSlider label="冰盘沿导角" value={params.edgeCurve} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, edgeCurve: v }))} />
+             </div>
+           )}
+           {leftTab === 'FRAME' && (
+             <div className="flex flex-col gap-5 mt-1">
+               <CustomSlider label="边抹厚度" value={params.frameHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, frameHeight: v }))} />
+               <CustomSlider label="束腰比例" value={params.waistHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistHeight: v }))} />
+               <CustomSlider label="束腰深度" value={params.waistInset} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistInset: v }))} />
+               <CustomSlider label="托腮高度" value={params.waistLineHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistLineHeight: v }))} />
+               <CustomSlider label="托腮深度" value={params.waistLineDepth} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistLineDepth: v }))} />
+               <div className="w-full h-px bg-[#E3BEB8]/30 my-0.5" />
+               <CustomSlider label="牙条比例" value={params.apronHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, apronHeight: v }))} />
+               <CustomSlider label="牙条厚度" value={params.apronThick} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, apronThick: v }))} />
+               <CustomSlider label="壸门券口深度" value={params.archDepth} min={-1} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, archDepth: v }))} />
+               <CustomSlider label="券口轮廓" value={params.archShape} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, archShape: v }))} />
+             </div>
+           )}
+           {leftTab === 'LEGS' && (
+             <div className="flex flex-col gap-5 mt-1">
+                <div className="flex flex-col gap-2.5">
+                   <span className="text-[10px] font-bold tracking-widest text-[#6E0000] font-sans">腿足类型</span>
+                   <div className="flex gap-2 w-full">
+                      {(['straight', 'hoof', 'curved'] as LegFamily[]).map(fam => {
+                        const labelMap: Record<LegFamily, string> = { 'straight': '直腿', 'hoof': '马蹄', 'curved': '三弯腿' };
+                        return (
+                          <button key={fam} onClick={() => setParams(p => ({...p, legFamily: fam}))}
+                            className={cn("flex-1 py-1.5 text-[10px] font-bold rounded-lg border transition-colors", params.legFamily === fam ? "bg-[#6E0000] text-white border-[#6E0000] shadow-md shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
+                            {labelMap[fam]}
+                          </button>
+                        );
+                      })}
+                   </div>
+                   <div className="flex gap-2 w-full mt-0.5">
+                      {(['square', 'round'] as LegSection[]).map(sec => {
+                        const labelMap: Record<LegSection, string> = { 'square': '方材', 'round': '圆材' };
+                        return (
+                          <button key={sec} onClick={() => setParams(p => ({...p, legSection: sec}))}
+                            className={cn("flex-1 py-1.5 text-[10px] font-bold rounded-lg border transition-colors", params.legSection === sec ? "bg-[#6E0000] text-white border-[#6E0000] shadow-md shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
+                            {labelMap[sec]}
+                          </button>
+                        );
+                      })}
+                   </div>
+               </div>
+               <div className="w-full h-px bg-[#E3BEB8]/30 my-0.5" />
+               <CustomSlider label="腿足粗细" value={params.legThickness} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, legThickness: v }))} />
+               {params.legFamily !== 'curved' && <CustomSlider label="底足收分" value={params.legTaper} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, legTaper: v }))} />}
+               {params.legFamily === 'hoof' && <CustomSlider label="马蹄内翻弧度" value={params.hoofIntensity} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, hoofIntensity: v }))} />}
+               {params.legFamily === 'curved' && (
+                 <>
+                   <CustomSlider label="弯曲度" value={params.legCurve} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, legCurve: v }))} />
+                   <CustomSlider label="重心位置" value={params.curveBalance} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, curveBalance: v }))} />
+                 </>
+               )}
+             </div>
+           )}
+           {leftTab === 'FINISH' && (
+             <div className="flex flex-col gap-5 mt-1">
+                <div className="flex flex-col gap-3">
+                   <span className="text-[10px] font-bold tracking-widest text-[#6E0000] font-sans">木料选择</span>
+                   <div className="grid grid-cols-2 gap-3">
+                      {(['black-walnut', 'traditional-rosewood'] as WoodType[]).map((type) => {
+                        const labelMap: Record<WoodType, string> = { 'black-walnut': '北美黑胡桃', 'traditional-rosewood': '大果紫檀' };
+                        return (
                           <button
-                            key={l}
-                            onClick={() => setParams(p => ({ ...p, lustre: l }))}
+                            key={type}
+                            onClick={() => setParams(p => ({ ...p, woodType: type }))}
                             className={cn(
-                              "text-[11px] font-bold uppercase transition-colors",
-                              params.lustre === l ? "text-brand-coral" : "text-brand-ink/40 hover:text-brand-ink"
+                              "flex flex-col items-center justify-center p-3 border transition-all rounded-[12px]",
+                              params.woodType === type 
+                                ? "border-[#6E0000] bg-[#6E0000] text-white shadow-md shadow-[#6E0000]/20" 
+                                : "border-[#E3BEB8]/50 bg-white/50 text-[#6E0000]/70 hover:border-[#6E0000]/30 hover:text-[#6E0000]"
                             )}
                           >
-                            {l === 'matte-silk' ? '哑光' : '高光'}
+                            <div className={cn("w-10 h-10 rounded-full mb-2 shadow-inner", params.woodType === type ? "border-2 border-white/80" : "border border-black/10", type === 'black-walnut' ? "bg-[#3D2B1F]" : "bg-[#5C1A1A]")} />
+                            <span className="text-[10px] font-bold tracking-tight text-center leading-tight h-6 flex items-center">
+                              {labelMap[type]}
+                            </span>
                           </button>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  </SidebarSection>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="chat"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex-1 flex flex-col min-h-0"
-                >
-                  <div className="flex-1 bg-white/50 rounded-[20px] p-4 mb-4 overflow-y-auto custom-scrollbar flex flex-col gap-4 border border-brand-coral/10 shadow-inner">
-                    {messages.map((m, i) => (
-                      <div 
-                        key={i} 
-                        className={cn(
-                          "max-w-[85%] p-4 rounded-2xl text-xs leading-relaxed shadow-sm",
-                          m.role === 'assistant' 
-                            ? "bg-white self-start text-brand-ink border border-brand-coral/5" 
-                            : "bg-brand-coral self-end text-white"
-                        )}
-                      >
-                        {m.content}
-                      </div>
-                    ))}
-                    {isTyping && (
-                      <div className="bg-white self-start p-4 rounded-2xl shadow-sm border border-brand-coral/5">
-                        <Loader2 className="w-4 h-4 animate-spin text-brand-coral" />
-                      </div>
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-                  <form 
-                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-                    className="relative mt-auto"
-                  >
-                    <textarea 
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      placeholder="咨询设计师..."
-                      rows={4}
-                      className="w-full bg-white border border-brand-coral/20 rounded-[24px] px-6 py-5 text-xs focus:ring-2 focus:ring-brand-coral/20 outline-none pr-16 shadow-lg resize-none custom-scrollbar transition-all"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={isTyping || !inputValue.trim()}
-                      className="absolute right-4 bottom-4 p-3 bg-brand-coral text-white hover:bg-brand-coral/90 rounded-full transition-all disabled:opacity-50 shadow-md active:scale-95"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+                <div className="w-full h-px bg-[#E3BEB8]/30 my-0.5" />
+                <CustomSlider label="木材色调" value={params.woodLightness} min={0.15} max={0.75} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, woodLightness: v }))} />
+                <div className="flex flex-col gap-2.5">
+                   <span className="text-[10px] font-bold tracking-widest text-[#6E0000] font-sans">漆面光泽</span>
+                   <div className="flex gap-2 w-full">
+                      {(['matte-silk', 'high-gloss'] as const).map((l) => (
+                        <button
+                          key={l}
+                          onClick={() => setParams(p => ({ ...p, lustre: l }))}
+                          className={cn("flex-1 py-1.5 text-[10px] font-bold rounded-lg border transition-colors", params.lustre === l ? "bg-[#6E0000] text-white border-[#6E0000] shadow-md shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}
+                        >
+                          {l === 'matte-silk' ? '擦蜡 / 哑光' : '生漆 / 高光'}
+                        </button>
+                      ))}
+                   </div>
+                </div>
+             </div>
+           )}
+        </div>
+      </div>
+
+      {/* Price Card */}
+      <div className={cn(glassPanel, "absolute left-[32px] bottom-[32px] w-[340px] h-[86px] flex items-center px-6 justify-between z-40 shadow-sm")}>
+        <div className="flex flex-col items-start justify-center flex-1">
+          <span className="font-sans font-bold text-[9px] text-[#6E0000]/70 tracking-widest mb-1">当前预估价格</span>
+          <span className="font-serif font-black text-[30px] text-[#1D1C16] leading-none mb-0.5">¥12,400</span>
+        </div>
+        <div className="w-[1px] h-[40px] bg-[#E3BEB8]/50 mx-4" />
+        <div className="flex flex-col items-start justify-center flex-1 pl-2">
+          <span className="font-sans font-bold text-[9px] text-[#6E0000]/70 tracking-widest mb-1">制作周期</span>
+          <span className="font-sans font-bold text-[18px] text-[#6E0000] leading-none mb-0.5">14-18 个工作日</span>
+        </div>
+      </div>
+
+      {/* Scholar Assistant Panel */}
+      <div className={cn(glassPanel, "absolute right-[32px] top-1/2 -translate-y-1/2 -mt-[20px] w-[384px] h-[666px] flex flex-col p-6 z-40")}>
+        <div className="flex items-center gap-4 mb-8 shrink-0 pb-2">
+          <div className="w-12 h-12 bg-white rounded-full flex justify-center items-center shrink-0 shadow-sm">
+            <Sparkles className="w-[22px] h-[22px] text-[#6E0000]" strokeWidth={2.5} />
           </div>
+          <h3 className="font-serif font-bold text-[20px] text-[#6E0000] tracking-wide">营造顾问</h3>
+        </div>
 
-          {/* Bottom Action Removed */}
-        </aside>
-      </main>
+        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6 pr-2 mb-6">
+          {messages.map((m, i) => {
+            const isSystem = m.role === 'assistant';
+            return (
+              <div key={i} className={cn("flex gap-3", !isSystem && "justify-end")}>
+                {isSystem && (
+                   <div className="w-8 h-8 rounded-full bg-white flex justify-center items-center shrink-0 shadow-sm mt-2">
+                     <UserCircle className="w-[18px] h-[18px] text-[#6E0000]" strokeWidth={2.5} />
+                   </div>
+                )}
+                <div className={cn(
+                  "p-4 text-[14px] leading-[1.62] font-sans flex-1 max-w-[282px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
+                  isSystem 
+                    ? "bg-[#F8F3EA] rounded-[0_16px_16px_16px] text-[#1D1C16]" 
+                    : "bg-[#6E0000] rounded-[16px_0_16px_16px] text-[#FFFFFF]"
+                )}>
+                  {m.content}
+                </div>
+                {!isSystem && (
+                   <div className="w-8 h-8 rounded-full bg-[#6E0000] flex justify-center items-center shrink-0 shadow-sm mt-2 items-center justify-center">
+                     <User className="w-4 h-4 text-white" />
+                   </div>
+                )}
+              </div>
+            );
+          })}
+          {isTyping && (
+             <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-white flex justify-center items-center shrink-0 shadow-sm mt-2">
+                   <UserCircle className="w-[18px] h-[18px] text-[#6E0000]" strokeWidth={2.5} />
+                </div>
+                <div className="bg-[#F8F3EA] shadow-[0_1px_2px_rgba(0,0,0,0.05)] rounded-[0_16px_16px_16px] p-4 text-[#1D1C16] flex items-center justify-center">
+                   <Loader2 className="w-4 h-4 animate-spin text-[#6E0000]" />
+                </div>
+             </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
 
+        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="relative shrink-0 mt-2">
+          <input 
+            type="text"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            disabled={isTyping}
+            placeholder="询问关于形制、材质或设计建议..."
+            className="w-full h-[52px] bg-[#E7E2D9]/50 rounded-full pl-6 pr-14 text-[14px] text-[#6E0000] placeholder:text-[#6E0000] outline-none focus:ring-1 focus:ring-[#6E0000]/30 transition-all font-sans"
+          />
+          <button 
+            type="submit"
+            disabled={isTyping || !inputValue.trim()}
+            className="absolute right-2 top-1.5 w-10 h-10 bg-[#6E0000] rounded-full flex justify-center items-center shadow-lg disabled:opacity-50 hover:scale-105 active:scale-95 transition-all"
+          >
+            <Send className="w-4 h-4 text-white ml-0.5" />
+          </button>
+        </form>
+      </div>
+
+      {/* Bottom Navbar */}
+      <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2 bg-white/60 border border-white/20 backdrop-blur-[9.6px] shadow-[0_16px_40px_rgba(0,0,0,0.1)] rounded-[12px] p-2 flex items-center gap-1 z-50">
+        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] bg-[#991B1B] rounded-[12px] text-white shadow-[0_8px_12px_-2.4px_rgba(0,0,0,0.1)] transition-transform">
+           <Palette className="w-[14px] h-[14px] mb-[3px]" />
+           <span className="text-[9px] tracking-[0.1em] font-sans font-bold">设计</span>
+        </button>
+        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] rounded-[12px] text-[#57534E] hover:bg-white/40 transition-colors">
+           <MessageCircle className="w-[14px] h-[14px] mb-[3px]" />
+           <span className="text-[9px] tracking-[0.1em] font-sans font-bold">咨询</span>
+        </button>
+        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] rounded-[12px] text-[#57534E] hover:bg-white/40 transition-colors">
+           <LayoutGrid className="w-[14px] h-[14px] mb-[3px]" />
+           <span className="text-[9px] tracking-[0.1em] font-sans font-bold">展厅</span>
+        </button>
+        <button className="flex flex-col items-center justify-center w-[90px] h-[51px] rounded-[12px] text-[#57534E] hover:bg-white/40 transition-colors">
+           <ShoppingBag className="w-[14px] h-[14px] mb-[3px]" />
+           <span className="text-[9px] tracking-[0.1em] font-sans font-bold">清单</span>
+        </button>
+      </div>
+      
       <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(210, 105, 78, 0.2);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #D2694E;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(110, 0, 0, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #6E0000; }
       `}} />
     </div>
   );
