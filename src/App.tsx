@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import rhino3dm from 'rhino3dm';
+import rhino3dmWasmUrl from 'rhino3dm/rhino3dm.wasm?url';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShoppingCart, 
@@ -109,14 +111,139 @@ const WOOD_COLORS = {
   'traditional-rosewood': '#5C1A1A',
 };
 
+interface PreciseMeshData {
+  vertices: number[];
+  faces: number[];
+}
+
+const rhinoModulePromise = (rhino3dm as unknown as (config?: { locateFile?: (fileName: string) => string }) => Promise<any>)({
+  locateFile: (fileName: string) => {
+    if (fileName.endsWith('.wasm')) {
+      return rhino3dmWasmUrl;
+    }
+    return fileName;
+  },
+});
+
+const getRhinoUnitScaleToMeters = (modelUnits: string | undefined) => {
+  switch (modelUnits) {
+    case 'Millimeters':
+      return 0.001;
+    case 'Centimeters':
+      return 0.01;
+    case 'Meters':
+      return 1;
+    case 'Inches':
+      return 0.0254;
+    case 'Feet':
+      return 0.3048;
+    default:
+      return 1;
+  }
+};
+
+const getRhinoListCount = (list: any) => {
+  if (!list) return 0;
+  if (typeof list.count === 'number') return list.count;
+  if (typeof list.count === 'function') return list.count();
+  if (typeof list.length === 'number') return list.length;
+  return 0;
+};
+
+const getRhinoNumber = (value: any, keys: Array<string | number>, fallback = 0) => {
+  for (const key of keys) {
+    const candidate = value?.[key];
+    if (typeof candidate === 'number') return candidate;
+  }
+  return fallback;
+};
+
+const isRhinoMesh = (value: any, rhino: any) => {
+  return Boolean(value && rhino?.Mesh && value instanceof rhino.Mesh);
+};
+
+const extractPreciseMeshData = (mesh: any, unitScale = 1): PreciseMeshData => {
+  const vertices = mesh.vertices();
+  const faces = mesh.faces();
+  const vertexCount = getRhinoListCount(vertices);
+  const faceCount = getRhinoListCount(faces);
+  const flattenedVertices: number[] = [];
+  const flattenedFaces: number[] = [];
+
+  for (let i = 0; i < vertexCount; i++) {
+    const vertex = vertices.get(i);
+    flattenedVertices.push(
+      getRhinoNumber(vertex, ['x', 'X', 0]) * unitScale,
+      getRhinoNumber(vertex, ['y', 'Y', 1]) * unitScale,
+      getRhinoNumber(vertex, ['z', 'Z', 2]) * unitScale,
+    );
+  }
+
+  for (let i = 0; i < faceCount; i++) {
+    const face = faces.get(i);
+    const a = getRhinoNumber(face, ['a', 'A', 0]);
+    const b = getRhinoNumber(face, ['b', 'B', 1]);
+    const c = getRhinoNumber(face, ['c', 'C', 2]);
+    const d = getRhinoNumber(face, ['d', 'D', 3], c);
+    flattenedFaces.push(a, b, c);
+    if (d !== c) {
+      flattenedFaces.push(a, c, d);
+    }
+  }
+
+  return {
+    vertices: flattenedVertices,
+    faces: flattenedFaces,
+  };
+};
+
+const parsePreciseMeshFromComputeResponse = async (result: any): Promise<PreciseMeshData> => {
+  const tree = result?.values?.[0]?.InnerTree;
+  const branch = tree?.['{0}'] ?? tree?.['0'];
+  const outputItem = branch?.[0];
+  const outputType = outputItem?.type;
+  const meshDataString = outputItem?.data;
+
+  if (outputType !== 'Rhino.Geometry.Mesh') {
+    throw new Error(`Expected Rhino.Geometry.Mesh, received ${outputType ?? 'unknown output type'}.`);
+  }
+
+  if (typeof meshDataString !== 'string') {
+    throw new Error('Compute response did not include serialized mesh data.');
+  }
+
+  const rhino = await rhinoModulePromise;
+  const meshObject = rhino.CommonObject.decode(JSON.parse(meshDataString));
+
+  if (!isRhinoMesh(meshObject, rhino)) {
+    throw new Error('rhino3dm decoded the output, but it was not a Rhino mesh.');
+  }
+
+  const unitScale = getRhinoUnitScaleToMeters(result?.modelunits);
+  const preciseMeshData = extractPreciseMeshData(meshObject, unitScale);
+  if (preciseMeshData.vertices.length === 0 || preciseMeshData.faces.length === 0) {
+    throw new Error('Decoded Rhino mesh did not contain vertices/faces.');
+  }
+
+  console.info('Precise model decoded', {
+    modelUnits: result?.modelunits,
+    unitScale,
+    vertexCount: preciseMeshData.vertices.length / 3,
+    triangleCount: preciseMeshData.faces.length / 3,
+  });
+
+  return preciseMeshData;
+};
+
 // --- 3D Component ---
 
-const TableCanvas = ({ params }: { params: TableParams }) => {
+const TableCanvas = ({ params, preciseMeshData }: { params: TableParams; preciseMeshData: PreciseMeshData | null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const tableGroupRef = useRef<THREE.Group | null>(null);
+  const preciseMeshRef = useRef<THREE.Mesh | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
 
   // Helper functions from snippet
@@ -627,6 +754,48 @@ const TableCanvas = ({ params }: { params: TableParams }) => {
 
   }, [params]);
 
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene || !tableGroupRef.current) return;
+
+    if (preciseMeshRef.current) {
+      scene.remove(preciseMeshRef.current);
+      preciseMeshRef.current.geometry.dispose();
+      (preciseMeshRef.current.material as THREE.Material).dispose();
+      preciseMeshRef.current = null;
+    }
+
+    if (!preciseMeshData) return;
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(preciseMeshData.vertices, 3));
+    geometry.setIndex(preciseMeshData.faces);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+
+    const material = new THREE.MeshStandardMaterial({
+      color: '#8B5E3C',
+      roughness: 0.52,
+      metalness: 0.04,
+      emissive: new THREE.Color('#1f140d'),
+      emissiveIntensity: 0.04,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = 2;
+    scene.add(mesh);
+    preciseMeshRef.current = mesh;
+
+    return () => {
+      if (preciseMeshRef.current === mesh) {
+        scene.remove(mesh);
+        geometry.dispose();
+        material.dispose();
+        preciseMeshRef.current = null;
+      }
+    };
+  }, [preciseMeshData]);
+
   return <div ref={containerRef} className="w-full h-full" />;
 };
 
@@ -677,6 +846,8 @@ const CustomSlider = ({
 
 export default function App() {
   const [params, setParams] = useState<TableParams>(DEFAULTS);
+  const [preciseMeshData, setPreciseMeshData] = useState<PreciseMeshData | null>(null);
+  const [isExportingPreciseModel, setIsExportingPreciseModel] = useState(false);
   const [leftTab, setLeftTab] = useState('DIMENSION');
   const [activeTab, setActiveTab] = useState<'parameters' | 'chat'>('chat');
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -778,11 +949,42 @@ export default function App() {
     setTimeout(() => setIsFinalizing(false), 3000);
   };
 
+  const handleExportPreciseModel = async () => {
+    if (isExportingPreciseModel) return;
+
+    setIsExportingPreciseModel(true);
+
+    try {
+      const response = await fetch('/api/compute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          length: params.length * 1000,
+          width: params.width * 1000,
+          height: params.height * 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Compute request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      setPreciseMeshData(await parsePreciseMeshFromComputeResponse(data));
+    } catch (error) {
+      console.error('Precise model export failed:', error);
+    } finally {
+      setIsExportingPreciseModel(false);
+    }
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#FEF9F0] selection:bg-[#6E0000]/10 font-sans">
       {/* 3D Canvas Area */}
       <div className="absolute inset-0 z-0">
-        <TableCanvas params={params} />
+        <TableCanvas params={params} preciseMeshData={preciseMeshData} />
       </div>
 
       {/* Header Overlay */}
@@ -802,6 +1004,16 @@ export default function App() {
           <div className="text-[#6E0000]"><Compass className="w-4 h-4" strokeWidth={2.5} /></div>
           <h2 className="text-heading-panel text-[#1D1C16]">定制参数</h2>
         </div>
+
+        <button
+          type="button"
+          onClick={handleExportPreciseModel}
+          disabled={isExportingPreciseModel}
+          className="shrink-0 h-[42px] rounded-[12px] bg-gradient-to-r from-[#6E0000] to-[#8C1616] text-white text-ui-button shadow-[0_8px_16px_-6px_rgba(110,0,0,0.35)] disabled:opacity-70 disabled:cursor-wait flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+        >
+          {isExportingPreciseModel ? <Loader2 className="w-4 h-4 animate-spin" /> : <Box className="w-4 h-4" />}
+          <span>{isExportingPreciseModel ? 'Exporting...' : 'Export Precise Model'}</span>
+        </button>
 
         {/* Tabs */}
         <div className="flex bg-white/70 rounded-[12px] p-1 h-[40px] items-center w-full justify-between shrink-0 border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)]">

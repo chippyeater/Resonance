@@ -4,10 +4,15 @@ import { GoogleGenAI, Type } from '@google/genai';
 import OpenAI from 'openai';
 import path from 'path';
 
+import fs from 'fs';
+
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// 读取 GH 文件（启动时加载一次）
+const ghScript = fs.readFileSync('./test_box.gh').toString('base64');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const githubAi = new OpenAI({
@@ -83,6 +88,36 @@ const githubUpdateTableParamsFunction = {
     }
   }
 };
+
+app.post('/api/compute', async (req, res) => {
+  try {
+    const { length = 1.8, width = 0.65, height = 0.78 } = req.body;
+
+    const payload = {
+      algo: ghScript,
+      pointer: null,
+      values: [
+        { ParamName: 'RH_IN:length', InnerTree: { '0': [{ type: 'System.Double', data: length }] } },
+        { ParamName: 'RH_IN:width',  InnerTree: { '0': [{ type: 'System.Double', data: width  }] } },
+        { ParamName: 'RH_IN:height', InnerTree: { '0': [{ type: 'System.Double', data: height }] } },
+      ]
+    };
+
+    const response = await fetch('http://localhost:5000/grasshopper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    // 暂时先返回原始数据
+    res.json(result);
+
+  } catch (error) {
+    console.error('Compute error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Rhino.Compute failed' });
+  }
+});
 
 app.post('/api/chat', async (req, res) => {
   try {

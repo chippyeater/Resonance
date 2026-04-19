@@ -26,6 +26,7 @@
     "openai": "^6.34.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "rhino3dm": "^8.17.0",
     "tailwind-merge": "^3.5.0",
     "three": "^0.183.2",
     "vite": "^6.2.0"
