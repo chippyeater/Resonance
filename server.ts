@@ -7,9 +7,35 @@ import path from 'path';
 import fs from 'fs';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
+const RHINO_COMPUTE_URL = process.env.RHINO_COMPUTE_URL || 'http://localhost:5000/grasshopper';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(express.json());
+app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
+  const allowAnyOrigin = ALLOWED_ORIGINS.length === 0;
+
+  if (allowAnyOrigin && requestOrigin) {
+    res.header('Access-Control-Allow-Origin', requestOrigin);
+  } else if (requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)) {
+    res.header('Access-Control-Allow-Origin', requestOrigin);
+  }
+
+  res.header('Vary', 'Origin');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+
+  next();
+});
 
 // 读取 GH 文件（启动时加载一次）
 const ghScript = fs.readFileSync('./desk.ghx').toString('base64');
@@ -107,7 +133,7 @@ app.post('/api/compute', async (req, res) => {
       ]
     };
 
-    const response = await fetch('http://localhost:5000/grasshopper', {
+    const response = await fetch(RHINO_COMPUTE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -218,6 +244,10 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Rhino.Compute target: ${RHINO_COMPUTE_URL}`);
+    console.log(
+      `CORS origins: ${ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS.join(', ') : 'dynamic reflect (development mode)'}`,
+    );
   });
 }
 

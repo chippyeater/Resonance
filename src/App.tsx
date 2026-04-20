@@ -11,6 +11,9 @@ import rhino3dmWasmUrl from 'rhino3dm/rhino3dm.wasm?url';
 import { Box, Loader2, Send } from 'lucide-react';
 import { cn } from './lib/utils';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+const buildApiUrl = (path: string) => (API_BASE_URL ? `${API_BASE_URL}${path}` : path);
+
 interface OrdinaryTableParams {
   length: number;
   width: number;
@@ -597,7 +600,7 @@ export default function App() {
 
   const requestPreciseModel = async (nextParams: OrdinaryTableParams, signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/compute', {
+      const response = await fetch(buildApiUrl('/api/compute'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -669,7 +672,7 @@ export default function App() {
     setActiveTab('assistant');
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(buildApiUrl('/api/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
