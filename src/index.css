@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-serif: "Noto Serif SC", serif;
-  --font-sans: "Manrope", sans-serif;
+  --font-sans: "Bebas Neue", sans-serif;
+  --font-mono: "DM Mono", monospace;
   
   --color-brand-coral: #D2694E;
   --color-brand-teal: #283F3E;
@@ -12,149 +13,176 @@
   --color-brand-ink: #283F3E;
 }
 
-/* 
- * ==========================================
- * /* Typography Tokens */ 
- * ==========================================
- */
+/* Typography Tokens */
 :root {
+  --color-app-bg: #0d0d0d;
+  --color-panel-bg: #171717;
+  --color-panel-hover: #1a1a1a;
+  --color-border-main: #222222;
+  --color-border-subtle: #1e1e1e;
+  --color-accent: #e63b2e;
+  --color-text-main: #f0ebe0;
+  --color-text-secondary: #aaaaaa;
+  --color-text-muted: #666666;
+  --color-text-faint: #555555;
+  --color-user-bubble: #1c1208;
+  --color-user-bubble-text: #c8a97a;
+
   /* Text Role Sizes */
-  --size-brand-title: 28px;
-  --size-brand-subtitle: 12px;
-  --size-heading-panel: 22px;
-  --size-heading-assistant: 20px;
-  --size-stat-primary: 28px;
-  --size-stat-secondary: 16px;
-  --size-stat-label: 12px;
-  --size-ui-tab: 13px;
-  --size-ui-group: 14px;
-  --size-ui-control: 13px;
-  --size-ui-value: 12px;
-  --size-ui-button: 13px;
-  --size-chat-message: 14px;
-  --size-nav-item: 12px;
+  --size-brand-title: 62px;
+  --size-brand-subtitle: 8px;
+  --size-heading-panel: 9px;
+  --size-heading-assistant: 9px;
+  --size-stat-primary: 30px;
+  --size-stat-secondary: 30px;
+  --size-stat-label: 7px;
+  --size-ui-tab: 8px;
+  --size-ui-group: 10px;
+  --size-ui-control: 8px;
+  --size-ui-value: 30px;
+  --size-ui-button: 11px;
+  --size-chat-message: 12px;
+  --size-nav-item: 8px;
 
   /* Line Heights */
-  --line-height-none: 1;
+  --line-height-none: 0.9;
   --line-height-tight: 1.25;
-  --line-height-relaxed: 1.62;
+  --line-height-relaxed: 1.7;
 
   /* Tracking */
   --tracking-tight: -0.02em;
   --tracking-normal: 0em;
-  --tracking-wide: 0.02em;
-  --tracking-widest: 0.1em;
-  --tracking-brand: 0.2em;
+  --tracking-wide: 0.12em;
+  --tracking-widest: 0.18em;
+  --tracking-brand: 0.25em;
 }
 
 @layer components {
   /* Brand Identity (Logo and Taglines) */
   .text-brand-title {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: var(--size-brand-title);
-    font-weight: 800; /* extra bold */
+    font-weight: 400;
     line-height: var(--line-height-none);
-    letter-spacing: var(--tracking-tight);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
   .text-brand-subtitle {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--size-brand-subtitle);
-    font-weight: 500;
-    letter-spacing: var(--tracking-brand);
+    font-weight: 400;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
   }
 
   /* Headings (Panels and Assistants) */
   .text-heading-panel {
-    font-family: var(--font-serif);
+    font-family: var(--font-mono);
     font-size: var(--size-heading-panel);
-    font-weight: 700;
-    line-height: var(--line-height-none);
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
   .text-heading-assistant {
-    font-family: var(--font-serif);
+    font-family: var(--font-mono);
     font-size: var(--size-heading-assistant);
-    font-weight: 700;
-    letter-spacing: var(--tracking-wide);
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
 
   /* Metrics & Statistics */
   .text-stat-value-primary {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: var(--size-stat-primary);
-    font-weight: 800;
+    font-weight: 400;
     line-height: var(--line-height-none);
+    text-transform: uppercase;
   }
   .text-stat-value-secondary {
     font-family: var(--font-sans);
     font-size: var(--size-stat-secondary);
-    font-weight: 700;
+    font-weight: 400;
     line-height: var(--line-height-none);
+    text-transform: uppercase;
   }
   .text-stat-label {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--size-stat-label);
-    font-weight: 600;
-    letter-spacing: var(--tracking-widest);
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
 
   /* UI Controls & Navigation */
   .text-ui-tab {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--size-ui-tab);
-    font-weight: 600;
-    letter-spacing: var(--tracking-widest);
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
   .text-ui-label-group {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--size-ui-group);
-    font-weight: 700;
-    letter-spacing: var(--tracking-widest);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
   }
   .text-ui-label-control {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--size-ui-control);
-    font-weight: 600;
-    letter-spacing: var(--tracking-widest);
-    line-height: var(--line-height-none);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    line-height: 1.2;
+    text-transform: uppercase;
   }
   .text-ui-value-control {
     font-family: var(--font-sans);
     font-size: var(--size-ui-value);
-    font-weight: 600;
+    font-weight: 400;
     line-height: var(--line-height-none);
+    text-transform: uppercase;
   }
   .text-ui-button {
     font-family: var(--font-sans);
     font-size: var(--size-ui-button);
-    font-weight: 600;
+    font-weight: 400;
     line-height: var(--line-height-tight);
-    letter-spacing: var(--tracking-wide);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
   .text-nav-item {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--size-nav-item);
-    font-weight: 600;
-    letter-spacing: var(--tracking-widest);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
   /* Chat / Content */
-  .text-chat-message {
-    font-family: var(--font-sans);
+  .chat-message-text {
+    font-family: var(--font-serif);
     font-size: var(--size-chat-message);
-    line-height: var(--line-height-relaxed);
+    line-height: 1.75;
   }
-  .text-chat-input {
-    font-family: var(--font-sans);
-    font-size: var(--size-chat-message);
+  .chat-input-text {
+    font-family: var(--font-serif);
+    font-size: 10px;
   }
 }
 
 @layer base {
   html, body, #root {
-    @apply w-full h-full overflow-hidden m-0 p-0;
+    @apply m-0 h-full w-full overflow-x-hidden p-0;
   }
   body {
-    @apply bg-brand-cream text-brand-ink font-sans antialiased;
+    background: var(--color-app-bg);
+    color: var(--color-text-main);
+    font-family: var(--font-serif);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -162,5 +190,36 @@
   .text-rail {
     writing-mode: vertical-rl;
     text-orientation: mixed;
+  }
+
+  .grid-line {
+    border-color: var(--color-border-main);
+  }
+
+  .panel-dark {
+    background: var(--color-app-bg);
+    border-color: var(--color-border-main);
+  }
+
+  .panel-dark-subtle {
+    background: var(--color-panel-bg);
+    border-color: var(--color-border-subtle);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #222222;
+    border-radius: 0;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #2a2a2a;
   }
 }
