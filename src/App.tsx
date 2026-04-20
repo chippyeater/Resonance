@@ -65,6 +65,22 @@ interface TableParams {
   lustre: 'matte-silk' | 'high-gloss';
 }
 
+interface OrdinaryTableParams {
+  length: number;
+  width: number;
+  round: number;
+  leg_width: number;
+  frame_edge_thickness: number;
+  leg_height: number;
+  leg_open: number;
+  leg_tiptoe_degree: number;
+  frame_thickness: number;
+  lower_leg_depth: number;
+  upper_leg_depth: number;
+  leg_belly_depth: number;
+  frame_inset: number;
+}
+
 interface ParamChange {
   key: string;
   oldVal: any;
@@ -106,14 +122,84 @@ const DEFAULTS: TableParams = {
   lustre: 'matte-silk',
 };
 
+const ORDINARY_DEFAULTS: OrdinaryTableParams = {
+  length: 1.4,
+  width: 0.65,
+  round: 0.01,
+  leg_width: 0.04,
+  frame_edge_thickness: 0.019549,
+  leg_height: 0.73,
+  leg_open: 0,
+  leg_tiptoe_degree: 0,
+  frame_thickness: 0.04,
+  lower_leg_depth: 0.362,
+  upper_leg_depth: 0.076161,
+  leg_belly_depth: 0,
+  frame_inset: 0.012262,
+};
+
+const ORDINARY_LIMITS = {
+  length: { min: 0.6, max: 2.2, step: 0.01 },
+  width: { min: 0.6, max: 1.4, step: 0.01 },
+  round: { min: 0.001, max: 0.5, step: 0.001 },
+  leg_width: { min: 0.01, max: 0.2, step: 0.001 },
+  frame_edge_thickness: { min: 0.002, max: 0.025, step: 0.0001 },
+  leg_height: { min: 0.5, max: 0.75, step: 0.001 },
+  leg_open: { min: 0, max: 0.22, step: 0.001 },
+  leg_tiptoe_degree: { min: 0, max: 1, step: 0.01 },
+  frame_thickness: { min: 0.01, max: 0.1, step: 0.001 },
+  lower_leg_depth: { min: 0, max: 1.0, step: 0.001 },
+  upper_leg_depth: { min: 0.004, max: 0.2, step: 0.001 },
+  leg_belly_depth: { min: 0, max: 0.19, step: 0.001 },
+  frame_inset: { min: 0, max: 0.2, step: 0.001 },
+} as const;
+
 const WOOD_COLORS = {
   'black-walnut': '#3D2B1F',
   'traditional-rosewood': '#5C1A1A',
 };
 
+const derivePreviewParams = (params: OrdinaryTableParams): TableParams => {
+  const legWidthNormalized = THREE.MathUtils.clamp((params.leg_width - 0.01) / 0.19, 0, 1);
+  const roundNormalized = THREE.MathUtils.clamp((params.round - 0.01) / 0.49, 0, 1);
+  const frameThicknessNormalized = THREE.MathUtils.clamp((params.frame_thickness - 0.01) / 0.09, 0, 1);
+  const frameInsetNormalized = THREE.MathUtils.clamp(params.frame_inset / 0.1, 0, 1);
+  const frameEdgeNormalized = THREE.MathUtils.clamp((params.frame_edge_thickness - 0.002) / 0.023, 0, 1);
+
+  return {
+    ...DEFAULTS,
+    length: params.length,
+    width: params.width,
+    height: params.leg_height + 0.045,
+    legFamily: 'straight',
+    legSection: 'square',
+    legThickness: legWidthNormalized,
+    edgeCurve: roundNormalized,
+    legTaper: THREE.MathUtils.clamp(params.leg_tiptoe_degree, 0, 1),
+    frameHeight: frameThicknessNormalized,
+    waistInset: frameInsetNormalized,
+    apronThick: frameEdgeNormalized,
+    waistHeight: 0.18,
+    waistLineHeight: 0.1,
+    waistLineDepth: 0.08,
+    apronHeight: 0.72,
+    archDepth: 0,
+    archShape: 0.25,
+  };
+};
+
 interface PreciseMeshData {
   vertices: number[];
   faces: number[];
+}
+
+interface PreciseModelData {
+  outputName: string;
+  modelUnits?: string;
+  unitScale: number;
+  branchCount: number;
+  meshItemCount: number;
+  meshes: PreciseMeshData[];
 }
 
 const rhinoModulePromise = (rhino3dm as unknown as (config?: { locateFile?: (fileName: string) => string }) => Promise<any>)({
@@ -172,10 +258,13 @@ const extractPreciseMeshData = (mesh: any, unitScale = 1): PreciseMeshData => {
 
   for (let i = 0; i < vertexCount; i++) {
     const vertex = vertices.get(i);
+    const x = getRhinoNumber(vertex, ['x', 'X', 0]) * unitScale;
+    const y = getRhinoNumber(vertex, ['y', 'Y', 1]) * unitScale;
+    const z = getRhinoNumber(vertex, ['z', 'Z', 2]) * unitScale;
     flattenedVertices.push(
-      getRhinoNumber(vertex, ['x', 'X', 0]) * unitScale,
-      getRhinoNumber(vertex, ['y', 'Y', 1]) * unitScale,
-      getRhinoNumber(vertex, ['z', 'Z', 2]) * unitScale,
+      x,
+      z,
+      -y,
     );
   }
 
@@ -197,10 +286,7 @@ const extractPreciseMeshData = (mesh: any, unitScale = 1): PreciseMeshData => {
   };
 };
 
-const parsePreciseMeshFromComputeResponse = async (result: any): Promise<PreciseMeshData> => {
-  const tree = result?.values?.[0]?.InnerTree;
-  const branch = tree?.['{0}'] ?? tree?.['0'];
-  const outputItem = branch?.[0];
+const decodeComputeMeshOutput = async (outputItem: any, unitScale: number) => {
   const outputType = outputItem?.type;
   const meshDataString = outputItem?.data;
 
@@ -219,31 +305,72 @@ const parsePreciseMeshFromComputeResponse = async (result: any): Promise<Precise
     throw new Error('rhino3dm decoded the output, but it was not a Rhino mesh.');
   }
 
-  const unitScale = getRhinoUnitScaleToMeters(result?.modelunits);
   const preciseMeshData = extractPreciseMeshData(meshObject, unitScale);
   if (preciseMeshData.vertices.length === 0 || preciseMeshData.faces.length === 0) {
     throw new Error('Decoded Rhino mesh did not contain vertices/faces.');
   }
+  return preciseMeshData;
+};
+
+const parsePreciseMeshFromComputeResponse = async (result: any): Promise<PreciseModelData> => {
+  const unitScale = getRhinoUnitScaleToMeters(result?.modelunits);
+  const values = Array.isArray(result?.values) ? result.values : [];
+  const deskOutput =
+    values.find((value: any) => value?.ParamName === 'RH_OUT:desk') ??
+    values.find((value: any) => typeof value?.ParamName === 'string' && value.ParamName.startsWith('RH_OUT:')) ??
+    values[0];
+
+  const tree = deskOutput?.InnerTree;
+  const paths = tree && typeof tree === 'object' ? Object.keys(tree) : [];
+  const meshes: PreciseMeshData[] = [];
+  let meshItemCount = 0;
+
+  for (const path of paths) {
+    const branchItems = Array.isArray(tree?.[path]) ? tree[path] : [];
+    for (const outputItem of branchItems) {
+      if (outputItem?.type !== 'Rhino.Geometry.Mesh') {
+        continue;
+      }
+      meshItemCount += 1;
+      const meshData = await decodeComputeMeshOutput(outputItem, unitScale);
+      meshes.push(meshData);
+    }
+  }
+
+  if (meshes.length === 0) {
+    throw new Error('Compute response did not include a usable mesh output.');
+  }
 
   console.info('Precise model decoded', {
+    outputName: deskOutput?.ParamName,
+    innerTreePathCount: paths.length,
+    meshItemCount,
     modelUnits: result?.modelunits,
     unitScale,
-    vertexCount: preciseMeshData.vertices.length / 3,
-    triangleCount: preciseMeshData.faces.length / 3,
+    meshCount: meshes.length,
+    vertexCount: meshes.reduce((sum, mesh) => sum + mesh.vertices.length / 3, 0),
+    triangleCount: meshes.reduce((sum, mesh) => sum + mesh.faces.length / 3, 0),
   });
 
-  return preciseMeshData;
+  return {
+    outputName: deskOutput?.ParamName ?? 'unknown',
+    modelUnits: result?.modelunits,
+    unitScale,
+    branchCount: paths.length,
+    meshItemCount,
+    meshes,
+  };
 };
 
 // --- 3D Component ---
 
-const TableCanvas = ({ params, preciseMeshData }: { params: TableParams; preciseMeshData: PreciseMeshData | null }) => {
+const TableCanvas = ({ params, preciseModelData }: { params: OrdinaryTableParams; preciseModelData: PreciseModelData | null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const tableGroupRef = useRef<THREE.Group | null>(null);
-  const preciseMeshRef = useRef<THREE.Mesh | null>(null);
+  const preciseMeshGroupRef = useRef<THREE.Group | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
 
   // Helper functions from snippet
@@ -586,7 +713,7 @@ const TableCanvas = ({ params, preciseMeshData }: { params: TableParams; precise
     };
   }, []);
 
-  // Update Table Geometry
+  // Local procedural preview disabled while Rhino Compute drives the live model.
   useEffect(() => {
     if (!tableGroupRef.current) return;
     const group = tableGroupRef.current;
@@ -597,204 +724,92 @@ const TableCanvas = ({ params, preciseMeshData }: { params: TableParams; precise
       group.remove(obj);
     }
 
-    const p = params;
-    const woodMat = new THREE.MeshStandardMaterial({
-      color: woodColor(p.woodType, p.woodLightness),
-      roughness: p.lustre === 'matte-silk' ? 0.55 : 0.2,
-      metalness: 0.02,
-      emissive: new THREE.Color(0x1a1410),
-      emissiveIntensity: 0.07,
-    });
-
-    const topT = 0.045;
-    const legH = p.height - topT;
-    const minDim = Math.min(p.length, p.width);
-    const maxLeg = minDim * 0.14;
-    const legTop = THREE.MathUtils.clamp(
-      minDim * (0.045 + p.legThickness * 0.1),
-      0.028,
-      maxLeg
-    );
-    const inset = Math.max(legTop * 1.35, 0.05);
-    const lx = p.length * 0.5 - inset;
-    const lz = p.width * 0.5 - inset;
-
-    const edge = THREE.MathUtils.clamp(p.edgeCurve, 0, 1);
-    const rMax = Math.min(p.length, p.width) * 0.07;
-    const cornerR = edge * edge * rMax;
-
-    let topGeom;
-    if (cornerR < 0.0008) {
-      topGeom = new THREE.BoxGeometry(p.length, topT, p.width);
-    } else {
-      topGeom = new RoundedBoxGeometry(p.length, topT, p.width, 3, cornerR);
-    }
-    const top = new THREE.Mesh(topGeom, woodMat);
-    top.position.y = p.height - topT / 2;
-    top.castShadow = true;
-    top.receiveShadow = true;
-    group.add(top);
-
-    const frameH = THREE.MathUtils.clamp(
-      legH * (0.08 + p.frameHeight * 0.22),
-      0.04,
-      Math.min(legH * 0.5, 0.18)
-    );
-    const frameWeightSum = p.waistHeight + p.apronHeight;
-    const waistShare = THREE.MathUtils.clamp(
-      frameWeightSum > 1e-6 ? p.waistHeight / frameWeightSum : 0.5,
-      0.12,
-      0.88
-    );
-    const waistH = frameH * waistShare;
-    const apronH = frameH - waistH;
-    const waistInset = THREE.MathUtils.clamp(
-      0.01 + p.waistInset * Math.min(p.length, p.width) * 0.08,
-      0.01,
-      Math.min(p.length, p.width) * 0.14
-    );
-    const waistDepth = THREE.MathUtils.clamp(
-      Math.max(legTop * 0.68, 0.03),
-      0.03,
-      Math.min(p.length, p.width) * 0.18
-    );
-    const waistOuterX = Math.max(p.length - waistInset * 2, waistDepth * 2 + 0.02);
-    const waistOuterZ = Math.max(p.width - waistInset * 2, waistDepth * 2 + 0.02);
-    const yWaistCenter = p.height - topT - waistH / 2;
-
-    addRectRing(group, woodMat, waistOuterX, waistOuterZ, waistH, waistDepth, yWaistCenter);
-
-    const waistLineH = THREE.MathUtils.clamp(
-      0.004 + p.waistLineHeight * 0.012,
-      0.004,
-      Math.max(waistH * 0.3, 0.004)
-    );
-    const waistLineD = THREE.MathUtils.clamp(
-      0.004 + p.waistLineDepth * 0.014,
-      0.004,
-      Math.min(waistDepth * 0.6, 0.02)
-    );
-    const waistLineSpanX = waistOuterX + waistLineD * 1.3;
-    const waistLineSpanZ = waistOuterZ + waistLineD * 1.3;
-    const topLineY = yWaistCenter + (waistH - waistLineH) * 0.5 - 0.0002;
-    const bottomLineY = yWaistCenter - (waistH - waistLineH) * 0.5 + 0.0002;
-
-    addRectRing(group, woodMat, waistLineSpanX, waistLineSpanZ, waistLineH, waistLineD, topLineY);
-    addRectRing(group, woodMat, waistLineSpanX, waistLineSpanZ, waistLineH, waistLineD, bottomLineY);
-
-    const at = THREE.MathUtils.clamp(p.apronThick, 0, 1);
-    const apronDepth = 0.011 + at * 0.028;
-    const archD = THREE.MathUtils.clamp(p.archDepth, -1, 1);
-    const archS = THREE.MathUtils.clamp(p.archShape, 0, 1);
-
-    const innerX = 2 * lx - legTop;
-    const innerZ = 2 * lz - legTop;
-    const yApronCenter = p.height - topT - waistH - apronH / 2 - 0.0002;
-
-    const frontZ = lz;
-    const backZ = -lz;
-    const rightX = lx;
-    const leftX = -lx;
-
-    const gFront = createApronStripGeometry(innerX, apronH, apronDepth, archD, archS);
-    const frontApron = new THREE.Mesh(gFront, woodMat);
-    frontApron.position.set(0, yApronCenter, frontZ);
-    frontApron.castShadow = true;
-    frontApron.receiveShadow = true;
-    group.add(frontApron);
-
-    const gBack = createApronStripGeometry(innerX, apronH, apronDepth, archD, archS);
-    const backApron = new THREE.Mesh(gBack, woodMat);
-    backApron.position.set(0, yApronCenter, backZ);
-    backApron.castShadow = true;
-    backApron.receiveShadow = true;
-    group.add(backApron);
-
-    const gLeft = createApronStripGeometry(innerZ, apronH, apronDepth, archD, archS);
-    const leftApron = new THREE.Mesh(gLeft, woodMat);
-    leftApron.rotation.y = Math.PI / 2;
-    leftApron.position.set(leftX, yApronCenter, 0);
-    leftApron.castShadow = true;
-    leftApron.receiveShadow = true;
-    group.add(leftApron);
-
-    const gRight = createApronStripGeometry(innerZ, apronH, apronDepth, archD, archS);
-    const rightApron = new THREE.Mesh(gRight, woodMat);
-    rightApron.rotation.y = -Math.PI / 2;
-    rightApron.position.set(rightX, yApronCenter, 0);
-    rightApron.castShadow = true;
-    rightApron.receiveShadow = true;
-    group.add(rightApron);
-
-    const legPositions = [
-      [lx, legH / 2, lz],
-      [lx, legH / 2, -lz],
-      [-lx, legH / 2, lz],
-      [-lx, legH / 2, -lz],
-    ];
-    legPositions.forEach(([x, y, z]) => {
-      const legGeom = createLegGeometry({
-        family: p.legFamily,
-        section: p.legSection,
-        thickness: legTop,
-        height: legH,
-        taper: p.legTaper,
-        hoofIntensity: p.hoofIntensity,
-        legCurve: p.legCurve,
-        curveBalance: p.curveBalance,
-        x: x,
-        z: z,
-      });
-      const leg = new THREE.Mesh(legGeom, woodMat);
-      leg.position.set(x, y, z);
-      leg.castShadow = true;
-      leg.receiveShadow = true;
-      group.add(leg);
-    });
-
-  }, [params]);
+    // Previous procedural table preview intentionally disabled.
+  }, []);
 
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene || !tableGroupRef.current) return;
 
-    if (preciseMeshRef.current) {
-      scene.remove(preciseMeshRef.current);
-      preciseMeshRef.current.geometry.dispose();
-      (preciseMeshRef.current.material as THREE.Material).dispose();
-      preciseMeshRef.current = null;
+    if (preciseMeshGroupRef.current) {
+      scene.remove(preciseMeshGroupRef.current);
+      preciseMeshGroupRef.current.traverse((child) => {
+        if (!(child instanceof THREE.Mesh)) return;
+        child.geometry.dispose();
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => material.dispose());
+      });
+      preciseMeshGroupRef.current = null;
     }
 
-    if (!preciseMeshData) return;
+    if (!preciseModelData) return;
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(preciseMeshData.vertices, 3));
-    geometry.setIndex(preciseMeshData.faces);
-    geometry.computeVertexNormals();
-    geometry.computeBoundingSphere();
+    const group = new THREE.Group();
+    let addedMeshCount = 0;
 
-    const material = new THREE.MeshStandardMaterial({
-      color: '#8B5E3C',
-      roughness: 0.52,
-      metalness: 0.04,
-      emissive: new THREE.Color('#1f140d'),
-      emissiveIntensity: 0.04,
+    for (const meshData of preciseModelData.meshes) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(meshData.vertices, 3));
+      geometry.setIndex(meshData.faces);
+      geometry.computeVertexNormals();
+      geometry.computeBoundingSphere();
+      geometry.computeBoundingBox();
+
+      const material = new THREE.MeshStandardMaterial({
+        color: '#8B5E3C',
+        roughness: 0.5,
+        metalness: 0.04,
+        emissive: new THREE.Color('#1f140d'),
+        emissiveIntensity: 0.04,
+        side: THREE.DoubleSide,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      group.add(mesh);
+      addedMeshCount += 1;
+    }
+
+    let bbox = new THREE.Box3().setFromObject(group);
+    const size = bbox.getSize(new THREE.Vector3());
+
+    if (size.z > size.x && params.length > params.width) {
+      group.rotation.y = Math.PI / 2;
+      bbox = new THREE.Box3().setFromObject(group);
+    }
+
+    const center = bbox.getCenter(new THREE.Vector3());
+    group.position.set(-center.x, -bbox.min.y, -center.z);
+    group.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.renderOrder = 2;
+      }
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.renderOrder = 2;
-    scene.add(mesh);
-    preciseMeshRef.current = mesh;
+    scene.add(group);
+    preciseMeshGroupRef.current = group;
+
+    console.info('Precise model added to scene', {
+      outputName: preciseModelData.outputName,
+      innerTreePathCount: preciseModelData.branchCount,
+      meshItemCount: preciseModelData.meshItemCount,
+      addedMeshCount,
+    });
 
     return () => {
-      if (preciseMeshRef.current === mesh) {
-        scene.remove(mesh);
-        geometry.dispose();
-        material.dispose();
-        preciseMeshRef.current = null;
+      if (preciseMeshGroupRef.current === group) {
+        scene.remove(group);
+        group.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return;
+          child.geometry.dispose();
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach((material) => material.dispose());
+        });
+        preciseMeshGroupRef.current = null;
       }
     };
-  }, [preciseMeshData]);
+  }, [preciseModelData, params.length, params.width]);
 
   return <div ref={containerRef} className="w-full h-full" />;
 };
@@ -845,8 +860,8 @@ const CustomSlider = ({
 // --- Main App ---
 
 export default function App() {
-  const [params, setParams] = useState<TableParams>(DEFAULTS);
-  const [preciseMeshData, setPreciseMeshData] = useState<PreciseMeshData | null>(null);
+  const [params, setParams] = useState<OrdinaryTableParams>(ORDINARY_DEFAULTS);
+  const [preciseModelData, setPreciseModelData] = useState<PreciseModelData | null>(null);
   const [isExportingPreciseModel, setIsExportingPreciseModel] = useState(false);
   const [leftTab, setLeftTab] = useState('DIMENSION');
   const [activeTab, setActiveTab] = useState<'parameters' | 'chat'>('chat');
@@ -854,6 +869,7 @@ export default function App() {
   const [isPricePanelOpen, setIsPricePanelOpen] = useState(false);
   const [latestChanges, setLatestChanges] = useState<ParamChange[]>([]);
   const hudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const computeRequestIdRef = useRef(0);
 
   const startHudTimer = () => {
     if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
@@ -873,7 +889,6 @@ export default function App() {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -908,11 +923,11 @@ export default function App() {
       if (functionCalls) {
         for (const call of functionCalls) {
           if (call.name === 'update_table_params') {
-            const args = call.args as Partial<TableParams>;
+            const args = call.args as Record<string, any>;
             
             const changes: ParamChange[] = [];
             Object.entries(args).forEach(([key, newVal]) => {
-              const oldVal = params[key as keyof TableParams];
+              const oldVal = (params as Record<string, any>)[key];
               if (oldVal !== newVal) {
                 changes.push({ key, oldVal, newVal });
               }
@@ -923,7 +938,7 @@ export default function App() {
               startHudTimer();
             }
 
-            setParams(prev => ({ ...prev, ...args }));
+            setParams(prev => ({ ...prev, ...(args as Partial<OrdinaryTableParams>) }));
             setMessages(prev => [...prev, { role: 'assistant', content: "我已经根据您的需求更新了家具的定制参数，现在的设计符合您的预期吗？" }]);
           }
         }
@@ -949,21 +964,28 @@ export default function App() {
     setTimeout(() => setIsFinalizing(false), 3000);
   };
 
-  const handleExportPreciseModel = async () => {
-    if (isExportingPreciseModel) return;
-
-    setIsExportingPreciseModel(true);
-
+  const requestPreciseModel = async (nextParams: OrdinaryTableParams, signal?: AbortSignal) => {
     try {
       const response = await fetch('/api/compute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal,
         body: JSON.stringify({
-          length: params.length * 1000,
-          width: params.width * 1000,
-          height: params.height * 1000,
+          length: nextParams.length * 1000,
+          width: nextParams.width * 1000,
+          round: nextParams.round * 1000,
+          leg_width: nextParams.leg_width * 1000,
+          frame_edge_thickness: nextParams.frame_edge_thickness * 1000,
+          leg_height: nextParams.leg_height * 1000,
+          leg_open: nextParams.leg_open * 1000,
+          leg_tiptoe_degree: nextParams.leg_tiptoe_degree,
+          frame_thickness: nextParams.frame_thickness * 1000,
+          lower_leg_depth: nextParams.lower_leg_depth,
+          upper_leg_depth: nextParams.upper_leg_depth * 1000,
+          leg_belly_depth: nextParams.leg_belly_depth * 1000,
+          frame_inset: nextParams.frame_inset * 1000,
         }),
       });
 
@@ -972,19 +994,59 @@ export default function App() {
       }
 
       const data = await response.json();
-      setPreciseMeshData(await parsePreciseMeshFromComputeResponse(data));
+      return await parsePreciseMeshFromComputeResponse(data);
     } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        return null;
+      }
       console.error('Precise model export failed:', error);
-    } finally {
-      setIsExportingPreciseModel(false);
+      return null;
     }
   };
+
+  const handleExportPreciseModel = async () => {
+    if (isExportingPreciseModel) return;
+
+    setIsExportingPreciseModel(true);
+    const requestId = ++computeRequestIdRef.current;
+
+    try {
+      const modelData = await requestPreciseModel(params);
+      if (modelData && computeRequestIdRef.current === requestId) {
+        setPreciseModelData(modelData);
+      }
+    } finally {
+      if (computeRequestIdRef.current === requestId) {
+        setIsExportingPreciseModel(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++computeRequestIdRef.current;
+    const timer = window.setTimeout(async () => {
+      setIsExportingPreciseModel(true);
+      const modelData = await requestPreciseModel(params, controller.signal);
+      if (!controller.signal.aborted && modelData && computeRequestIdRef.current === requestId) {
+        setPreciseModelData(modelData);
+      }
+      if (!controller.signal.aborted && computeRequestIdRef.current === requestId) {
+        setIsExportingPreciseModel(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [params]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#FEF9F0] selection:bg-[#6E0000]/10 font-sans">
       {/* 3D Canvas Area */}
       <div className="absolute inset-0 z-0">
-        <TableCanvas params={params} preciseMeshData={preciseMeshData} />
+        <TableCanvas params={params} preciseModelData={preciseModelData} />
       </div>
 
       {/* Header Overlay */}
@@ -1019,9 +1081,8 @@ export default function App() {
         <div className="flex bg-white/70 rounded-[12px] p-1 h-[40px] items-center w-full justify-between shrink-0 border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)]">
            {[
              { id: 'DIMENSION', label: '基础尺寸' },
-             { id: 'FRAME', label: '架构造法' },
-             { id: 'LEGS', label: '腿足形制' },
-             { id: 'FINISH', label: '皮壳工艺' }
+             { id: 'FRAME', label: '框架参数' },
+             { id: 'LEGS', label: '腿足参数' },
            ].map(tab => (
              <button 
                key={tab.id}
@@ -1038,108 +1099,27 @@ export default function App() {
         <div className="flex flex-col gap-6 flex-1 overflow-y-auto custom-scrollbar pr-3 pb-4">
            {leftTab === 'DIMENSION' && (
              <div className="flex flex-col gap-6 mt-1">
-               <CustomSlider label="长度" value={params.length} min={0.8} max={2.0} step={0.01} unit="cm" onChange={(v) => setParams(p => ({ ...p, length: v }))} displayMul={100} />
-               <CustomSlider label="宽度" value={params.width} min={0.4} max={1.0} step={0.01} unit="cm" onChange={(v) => setParams(p => ({ ...p, width: v }))} displayMul={100} />
-               <CustomSlider label="高度" value={params.height} min={0.5} max={0.9} step={0.01} unit="cm" onChange={(v) => setParams(p => ({ ...p, height: v }))} displayMul={100} />
-               <CustomSlider label="冰盘沿导角" value={params.edgeCurve} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, edgeCurve: v }))} />
+              <CustomSlider label="长度" value={params.length} min={ORDINARY_LIMITS.length.min} max={ORDINARY_LIMITS.length.max} step={ORDINARY_LIMITS.length.step} unit="cm" onChange={(v) => setParams(p => ({ ...p, length: v }))} displayMul={100} />
+              <CustomSlider label="宽度" value={params.width} min={ORDINARY_LIMITS.width.min} max={ORDINARY_LIMITS.width.max} step={ORDINARY_LIMITS.width.step} unit="cm" onChange={(v) => setParams(p => ({ ...p, width: v }))} displayMul={100} />
+              <CustomSlider label="腿高" value={params.leg_height} min={ORDINARY_LIMITS.leg_height.min} max={ORDINARY_LIMITS.leg_height.max} step={ORDINARY_LIMITS.leg_height.step} unit="cm" onChange={(v) => setParams(p => ({ ...p, leg_height: v }))} displayMul={100} />
+              <CustomSlider label="圆角" value={params.round} min={ORDINARY_LIMITS.round.min} max={ORDINARY_LIMITS.round.max} step={ORDINARY_LIMITS.round.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, round: v }))} displayMul={1000} />
              </div>
            )}
            {leftTab === 'FRAME' && (
              <div className="flex flex-col gap-5 mt-1">
-               <CustomSlider label="边抹厚度" value={params.frameHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, frameHeight: v }))} />
-               <CustomSlider label="束腰比例" value={params.waistHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistHeight: v }))} />
-               <CustomSlider label="束腰深度" value={params.waistInset} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistInset: v }))} />
-               <CustomSlider label="托腮高度" value={params.waistLineHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistLineHeight: v }))} />
-               <CustomSlider label="托腮深度" value={params.waistLineDepth} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, waistLineDepth: v }))} />
-               <div className="w-full h-px bg-[#E3BEB8]/30 my-0.5" />
-               <CustomSlider label="牙条比例" value={params.apronHeight} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, apronHeight: v }))} />
-               <CustomSlider label="牙条厚度" value={params.apronThick} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, apronThick: v }))} />
-               <CustomSlider label="壸门券口深度" value={params.archDepth} min={-1} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, archDepth: v }))} />
-               <CustomSlider label="券口轮廓" value={params.archShape} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, archShape: v }))} />
+              <CustomSlider label="框架厚度" value={params.frame_thickness} min={ORDINARY_LIMITS.frame_thickness.min} max={ORDINARY_LIMITS.frame_thickness.max} step={ORDINARY_LIMITS.frame_thickness.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, frame_thickness: v }))} displayMul={1000} />
+              <CustomSlider label="边厚" value={params.frame_edge_thickness} min={ORDINARY_LIMITS.frame_edge_thickness.min} max={ORDINARY_LIMITS.frame_edge_thickness.max} step={ORDINARY_LIMITS.frame_edge_thickness.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, frame_edge_thickness: v }))} displayMul={1000} />
+              <CustomSlider label="框架内缩" value={params.frame_inset} min={ORDINARY_LIMITS.frame_inset.min} max={ORDINARY_LIMITS.frame_inset.max} step={ORDINARY_LIMITS.frame_inset.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, frame_inset: v }))} displayMul={1000} />
              </div>
            )}
            {leftTab === 'LEGS' && (
              <div className="flex flex-col gap-5 mt-1">
-                <div className="flex flex-col gap-2.5">
-                   <span className="text-ui-label-group text-[#6E0000]">腿足类型</span>
-                   <div className="flex gap-2 w-full">
-                      {(['straight', 'hoof', 'curved'] as LegFamily[]).map(fam => {
-                        const labelMap: Record<LegFamily, string> = { 'straight': '直腿', 'hoof': '马蹄', 'curved': '三弯腿' };
-                        return (
-                          <button key={fam} onClick={() => setParams(p => ({...p, legFamily: fam}))}
-                            className={cn("text-ui-button flex-1 py-1.5 rounded-[8px] border transition-colors", params.legFamily === fam ? "bg-[#6E0000] text-white border-[#6E0000] shadow-sm shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
-                            {labelMap[fam]}
-                          </button>
-                        );
-                      })}
-                   </div>
-                   <div className="flex gap-2 w-full mt-0.5">
-                      {(['square', 'round'] as LegSection[]).map(sec => {
-                        const labelMap: Record<LegSection, string> = { 'square': '方材', 'round': '圆材' };
-                        return (
-                          <button key={sec} onClick={() => setParams(p => ({...p, legSection: sec}))}
-                            className={cn("text-ui-button flex-1 py-1.5 rounded-[8px] border transition-colors", params.legSection === sec ? "bg-[#6E0000] text-white border-[#6E0000] shadow-sm shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}>
-                            {labelMap[sec]}
-                          </button>
-                        );
-                      })}
-                   </div>
-               </div>
-               <div className="w-full h-px bg-[#E3BEB8]/30 my-0.5" />
-               <CustomSlider label="腿足粗细" value={params.legThickness} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, legThickness: v }))} />
-               {params.legFamily !== 'curved' && <CustomSlider label="底足收分" value={params.legTaper} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, legTaper: v }))} />}
-               {params.legFamily === 'hoof' && <CustomSlider label="马蹄内翻弧度" value={params.hoofIntensity} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, hoofIntensity: v }))} />}
-               {params.legFamily === 'curved' && (
-                 <>
-                   <CustomSlider label="弯曲度" value={params.legCurve} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, legCurve: v }))} />
-                   <CustomSlider label="重心位置" value={params.curveBalance} min={0} max={1} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, curveBalance: v }))} />
-                 </>
-               )}
-             </div>
-           )}
-           {leftTab === 'FINISH' && (
-             <div className="flex flex-col gap-5 mt-1">
-                 <div className="flex flex-col gap-3">
-                   <span className="text-ui-label-group text-[#6E0000]">木料选择</span>
-                   <div className="grid grid-cols-2 gap-3">
-                      {(['black-walnut', 'traditional-rosewood'] as WoodType[]).map((type) => {
-                        const labelMap: Record<WoodType, string> = { 'black-walnut': '北美黑胡桃', 'traditional-rosewood': '大果紫檀' };
-                        return (
-                          <button
-                            key={type}
-                            onClick={() => setParams(p => ({ ...p, woodType: type }))}
-                            className={cn(
-                              "flex flex-col items-center justify-center py-2 px-1 border transition-all rounded-[8px]",
-                              params.woodType === type 
-                                ? "border-[#6E0000] bg-[#6E0000] text-white shadow-sm shadow-[#6E0000]/20" 
-                                : "border-[#E3BEB8]/50 bg-white/50 text-[#6E0000]/70 hover:border-[#6E0000]/30 hover:text-[#6E0000]"
-                            )}
-                          >
-                            <div className={cn("w-6 h-6 rounded-full mb-1.5 shadow-inner", params.woodType === type ? "border-2 border-white/80" : "border border-black/10", type === 'black-walnut' ? "bg-[#3D2B1F]" : "bg-[#5C1A1A]")} />
-                            <span className="text-ui-button tracking-tight text-center flex items-center">
-                              {labelMap[type]}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                </div>
-                <div className="w-full h-px bg-[#E3BEB8]/30 my-0.5" />
-                <CustomSlider label="木材色调" value={params.woodLightness} min={0.15} max={0.75} step={0.01} unit="" onChange={(v) => setParams(p => ({ ...p, woodLightness: v }))} />
-                <div className="flex flex-col gap-2.5">
-                   <span className="text-ui-label-group text-[#6E0000]">漆面光泽</span>
-                   <div className="flex gap-2 w-full">
-                      {(['matte-silk', 'high-gloss'] as const).map((l) => (
-                        <button
-                          key={l}
-                          onClick={() => setParams(p => ({ ...p, lustre: l }))}
-                          className={cn("text-ui-button flex-1 py-1.5 rounded-[8px] border transition-colors", params.lustre === l ? "bg-[#6E0000] text-white border-[#6E0000] shadow-sm shadow-[#6E0000]/20" : "bg-white/50 border-[#E3BEB8]/50 text-[#6E0000]/70 hover:text-[#6E0000] hover:border-[#6E0000]/30")}
-                        >
-                          {l === 'matte-silk' ? '擦蜡 / 哑光' : '生漆 / 高光'}
-                        </button>
-                      ))}
-                   </div>
-                </div>
+               <CustomSlider label="腿宽" value={params.leg_width} min={ORDINARY_LIMITS.leg_width.min} max={ORDINARY_LIMITS.leg_width.max} step={ORDINARY_LIMITS.leg_width.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, leg_width: v }))} displayMul={1000} />
+               <CustomSlider label="腿开距" value={params.leg_open} min={ORDINARY_LIMITS.leg_open.min} max={ORDINARY_LIMITS.leg_open.max} step={ORDINARY_LIMITS.leg_open.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, leg_open: v }))} displayMul={1000} />
+               <CustomSlider label="脚尖度" value={params.leg_tiptoe_degree} min={ORDINARY_LIMITS.leg_tiptoe_degree.min} max={ORDINARY_LIMITS.leg_tiptoe_degree.max} step={ORDINARY_LIMITS.leg_tiptoe_degree.step} unit="" onChange={(v) => setParams(p => ({ ...p, leg_tiptoe_degree: v }))} />
+               <CustomSlider label="腿上深" value={params.upper_leg_depth} min={ORDINARY_LIMITS.upper_leg_depth.min} max={ORDINARY_LIMITS.upper_leg_depth.max} step={ORDINARY_LIMITS.upper_leg_depth.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, upper_leg_depth: v }))} displayMul={1000} />
+               <CustomSlider label="腿下深" value={params.lower_leg_depth} min={ORDINARY_LIMITS.lower_leg_depth.min} max={ORDINARY_LIMITS.lower_leg_depth.max} step={ORDINARY_LIMITS.lower_leg_depth.step} unit="" onChange={(v) => setParams(p => ({ ...p, lower_leg_depth: v }))} />
+               <CustomSlider label="腿肚深" value={params.leg_belly_depth} min={ORDINARY_LIMITS.leg_belly_depth.min} max={ORDINARY_LIMITS.leg_belly_depth.max} step={ORDINARY_LIMITS.leg_belly_depth.step} unit="mm" onChange={(v) => setParams(p => ({ ...p, leg_belly_depth: v }))} displayMul={1000} />
              </div>
            )}
         </div>

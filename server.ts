@@ -12,7 +12,7 @@ const PORT = 3000;
 app.use(express.json());
 
 // 读取 GH 文件（启动时加载一次）
-const ghScript = fs.readFileSync('./test_box.gh').toString('base64');
+const ghScript = fs.readFileSync('./desk.ghx').toString('base64');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const githubAi = new OpenAI({
@@ -26,29 +26,19 @@ const updateTableParamsFunction = {
   parameters: {
     type: Type.OBJECT,
     properties: {
-      length: { type: Type.NUMBER, description: "Length in meters (0.8-2.0)" },
-      width: { type: Type.NUMBER, description: "Width in meters (0.4-1.0)" },
-      height: { type: Type.NUMBER, description: "Height in meters (0.5-0.9)" },
-      legFamily: { type: Type.STRING, enum: ["hoof", "straight", "curved"], description: "The style of the legs" },
-      legSection: { type: Type.STRING, enum: ["square", "round"], description: "The cross-section of the legs" },
-      legThickness: { type: Type.NUMBER, description: "Leg thickness scale (0-1)" },
-      woodLightness: { type: Type.NUMBER, description: "Wood tone lightness (0.15-0.75)" },
-      edgeCurve: { type: Type.NUMBER, description: "Tabletop edge rounding (0-1)" },
-      legTaper: { type: Type.NUMBER, description: "Leg taper amount (0-1)" },
-      hoofIntensity: { type: Type.NUMBER, description: "Hoof kick/flare intensity (0-1)" },
-      legCurve: { type: Type.NUMBER, description: "Leg curve strength (0-1)" },
-      curveBalance: { type: Type.NUMBER, description: "Leg curve balance/emphasis (0-1)" },
-      frameHeight: { type: Type.NUMBER, description: "Total frame height scale (0-1)" },
-      waistHeight: { type: Type.NUMBER, description: "Waist height ratio (0-1)" },
-      waistInset: { type: Type.NUMBER, description: "Waist inset from edge (0-1)" },
-      waistLineHeight: { type: Type.NUMBER, description: "Waist molding line height (0-1)" },
-      waistLineDepth: { type: Type.NUMBER, description: "Waist molding line depth (0-1)" },
-      apronHeight: { type: Type.NUMBER, description: "Apron height ratio (0-1)" },
-      apronThick: { type: Type.NUMBER, description: "Apron thickness (0-1)" },
-      archDepth: { type: Type.NUMBER, description: "Apron lower arch depth (-1 to 1)" },
-      archShape: { type: Type.NUMBER, description: "Apron arch shape roundness (0-1)" },
-      woodType: { type: Type.STRING, enum: ["black-walnut", "traditional-rosewood"], description: "The type of wood" },
-      lustre: { type: Type.STRING, enum: ["matte-silk", "high-gloss"], description: "The finish of the wood" },
+      length: { type: Type.NUMBER, description: "Table length in meters (0.6-2.2)" },
+      width: { type: Type.NUMBER, description: "Table width in meters (0.6-1.0)" },
+      round: { type: Type.NUMBER, description: "Tabletop corner radius in meters (0.01-0.5)" },
+      leg_width: { type: Type.NUMBER, description: "Leg width in meters (0.01-0.2)" },
+      frame_edge_thickness: { type: Type.NUMBER, description: "Frame edge thickness in meters (0.002-0.025)" },
+      leg_height: { type: Type.NUMBER, description: "Leg height in meters (0.5-0.75)" },
+      leg_open: { type: Type.NUMBER, description: "Leg opening distance in meters (0-0.22)" },
+      leg_tiptoe_degree: { type: Type.NUMBER, description: "Leg tiptoe degree (0-1)" },
+      frame_thickness: { type: Type.NUMBER, description: "Frame structural thickness in meters (0.01-0.1)" },
+      lower_leg_depth: { type: Type.NUMBER, description: "Lower leg depth factor (0-1)" },
+      upper_leg_depth: { type: Type.NUMBER, description: "Upper leg depth in meters (0.004-0.2)" },
+      leg_belly_depth: { type: Type.NUMBER, description: "Leg belly depth in meters (0-0.19)" },
+      frame_inset: { type: Type.NUMBER, description: "Frame inset in meters (0-0.1)" },
     },
   },
 };
@@ -61,29 +51,19 @@ const githubUpdateTableParamsFunction = {
     parameters: {
       type: "object",
       properties: {
-        length: { type: "number", description: "Length in meters (0.8-2.0)" },
-        width: { type: "number", description: "Width in meters (0.4-1.0)" },
-        height: { type: "number", description: "Height in meters (0.5-0.9)" },
-        legFamily: { type: "string", enum: ["hoof", "straight", "curved"], description: "The style of the legs" },
-        legSection: { type: "string", enum: ["square", "round"], description: "The cross-section of the legs" },
-        legThickness: { type: "number", description: "Leg thickness scale (0-1)" },
-        woodLightness: { type: "number", description: "Wood tone lightness (0.15-0.75)" },
-        edgeCurve: { type: "number", description: "Tabletop edge rounding (0-1)" },
-        legTaper: { type: "number", description: "Leg taper amount (0-1)" },
-        hoofIntensity: { type: "number", description: "Hoof kick/flare intensity (0-1)" },
-        legCurve: { type: "number", description: "Leg curve strength (0-1)" },
-        curveBalance: { type: "number", description: "Leg curve balance/emphasis (0-1)" },
-        frameHeight: { type: "number", description: "Total frame height scale (0-1)" },
-        waistHeight: { type: "number", description: "Waist height ratio (0-1)" },
-        waistInset: { type: "number", description: "Waist inset from edge (0-1)" },
-        waistLineHeight: { type: "number", description: "Waist molding line height (0-1)" },
-        waistLineDepth: { type: "number", description: "Waist molding line depth (0-1)" },
-        apronHeight: { type: "number", description: "Apron height ratio (0-1)" },
-        apronThick: { type: "number", description: "Apron thickness (0-1)" },
-        archDepth: { type: "number", description: "Apron lower arch depth (-1 to 1)" },
-        archShape: { type: "number", description: "Apron arch shape roundness (0-1)" },
-        woodType: { type: "string", enum: ["black-walnut", "traditional-rosewood"], description: "The type of wood" },
-        lustre: { type: "string", enum: ["matte-silk", "high-gloss"], description: "The finish of the wood" },
+        length: { type: "number", description: "Table length in meters (0.6-2.2)" },
+        width: { type: "number", description: "Table width in meters (0.6-1.0)" },
+        round: { type: "number", description: "Tabletop corner radius in meters (0.01-0.5)" },
+        leg_width: { type: "number", description: "Leg width in meters (0.01-0.2)" },
+        frame_edge_thickness: { type: "number", description: "Frame edge thickness in meters (0.002-0.025)" },
+        leg_height: { type: "number", description: "Leg height in meters (0.5-0.75)" },
+        leg_open: { type: "number", description: "Leg opening distance in meters (0-0.22)" },
+        leg_tiptoe_degree: { type: "number", description: "Leg tiptoe degree (0-1)" },
+        frame_thickness: { type: "number", description: "Frame structural thickness in meters (0.01-0.1)" },
+        lower_leg_depth: { type: "number", description: "Lower leg depth factor (0-1)" },
+        upper_leg_depth: { type: "number", description: "Upper leg depth in meters (0.004-0.2)" },
+        leg_belly_depth: { type: "number", description: "Leg belly depth in meters (0-0.19)" },
+        frame_inset: { type: "number", description: "Frame inset in meters (0-0.1)" },
       }
     }
   }
@@ -91,15 +71,39 @@ const githubUpdateTableParamsFunction = {
 
 app.post('/api/compute', async (req, res) => {
   try {
-    const { length = 1.8, width = 0.65, height = 0.78 } = req.body;
+    const {
+      length = 1400,
+      width = 650,
+      round = 10,
+      leg_width = 40,
+      frame_edge_thickness = 19.549,
+      leg_height = 730,
+      leg_open = 0,
+      leg_tiptoe_degree = 0,
+      frame_thickness = 40,
+      lower_leg_depth = 0.362,
+      upper_leg_depth = 76.161,
+      leg_belly_depth = 0,
+      frame_inset = 12.262,
+    } = req.body;
 
     const payload = {
       algo: ghScript,
       pointer: null,
       values: [
         { ParamName: 'RH_IN:length', InnerTree: { '0': [{ type: 'System.Double', data: length }] } },
-        { ParamName: 'RH_IN:width',  InnerTree: { '0': [{ type: 'System.Double', data: width  }] } },
-        { ParamName: 'RH_IN:height', InnerTree: { '0': [{ type: 'System.Double', data: height }] } },
+        { ParamName: 'RH_IN:width', InnerTree: { '0': [{ type: 'System.Double', data: width }] } },
+        { ParamName: 'RH_IN:round', InnerTree: { '0': [{ type: 'System.Double', data: round }] } },
+        { ParamName: 'RH_IN:leg_width', InnerTree: { '0': [{ type: 'System.Double', data: leg_width }] } },
+        { ParamName: 'RH_IN:frame_edge_thickness', InnerTree: { '0': [{ type: 'System.Double', data: frame_edge_thickness }] } },
+        { ParamName: 'RH_IN:leg_height', InnerTree: { '0': [{ type: 'System.Double', data: leg_height }] } },
+        { ParamName: 'RH_IN:leg_open', InnerTree: { '0': [{ type: 'System.Double', data: leg_open }] } },
+        { ParamName: 'RH_IN:leg_tiptoe_degree', InnerTree: { '0': [{ type: 'System.Double', data: leg_tiptoe_degree }] } },
+        { ParamName: 'RH_IN:frame_thickness', InnerTree: { '0': [{ type: 'System.Double', data: frame_thickness }] } },
+        { ParamName: 'RH_IN:lower_leg_depth', InnerTree: { '0': [{ type: 'System.Double', data: lower_leg_depth }] } },
+        { ParamName: 'RH_IN:upper_leg_depth', InnerTree: { '0': [{ type: 'System.Double', data: upper_leg_depth }] } },
+        { ParamName: 'RH_IN:leg_belly_depth', InnerTree: { '0': [{ type: 'System.Double', data: leg_belly_depth }] } },
+        { ParamName: 'RH_IN:frame_inset', InnerTree: { '0': [{ type: 'System.Double', data: frame_inset }] } },
       ]
     };
 
@@ -129,7 +133,7 @@ app.post('/api/chat', async (req, res) => {
     
     let replyText = "";
     let replyFunctionCalls: any[] | undefined = undefined;
-    const systemInstruction = "You are an expert furniture designer for 'Resonance.', a premium brand specializing in modern, organic furniture. Your tone is elegant, professional, and helpful. Keep your responses concise, maximum 2-3 sentences. You can update the table parameters using the 'update_table_params' function. Parameters include dimensions (in meters), leg styles (hoof, straight, curved), leg sections (square, round), and advanced details like waist height, apron arch depth, and wood tone. Always explain your design choices briefly.";
+    const systemInstruction = "You are an expert furniture designer for 'Resonance.', a premium brand specializing in modern furniture. Your tone is elegant, professional, and helpful. Keep your responses concise, maximum 2-3 sentences. You can update the table parameters using the 'update_table_params' function. Available parameters are: length, width, round, leg_width, frame_edge_thickness, leg_height, leg_open, leg_tiptoe_degree, frame_thickness, lower_leg_depth, upper_leg_depth, leg_belly_depth, and frame_inset. All dimensional values are in meters unless they are normalized factors. Always explain your design choices briefly.";
 
     try {
       // 1. Try Gemini first

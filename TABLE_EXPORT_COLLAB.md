@@ -206,3 +206,144 @@
 
 - 真实桌子 GH 输出文件还未接入当前导出链路
 - 还未确认桌子 mesh 的最终输出名和最终 GH 文件路径
+
+### 2026-04-19 - 接入普通桌子 GH 输入参数
+
+计划：
+
+- 使用 `mesh table 20210718 框架系列.ghx` 作为新的 GH 输入来源
+- 从 `.ghx` 中提取 `RH_IN:*` 和 `RH_OUT:*` 接口名
+- 更新 `/api/compute` 的参数名映射，改为普通桌子参数
+- 更新前端参数状态和控制项，使其与 GH 输入名一一对应
+- 保持当前 `rhino3dm` 导出解码链路不变
+
+预计修改文件：
+
+- `TABLE_EXPORT_COLLAB.md`
+- `server.ts`
+- `src/App.tsx`
+
+风险：
+
+- 当前前端程序化预览逻辑是旧案几参数模型，和新的普通桌子 GH 输入并不一致
+- 新 GH 文件路径不在 `Resonance` 目录下，切换文件时需要注意相对路径
+- GH 输出虽然存在 `RH_OUT:desk` 分组，但仍需确认实际 Compute 返回的 `values[0]` 是否就是桌子 mesh
+
+已完成：
+
+- 已从 `.ghx` 提取到以下接口：
+  - `RH_IN:length`
+  - `RH_IN:width`
+  - `RH_IN:round`
+  - `RH_IN:leg_width`
+  - `RH_IN:frame_edge_thickness`
+  - `RH_IN:leg_height`
+  - `RH_IN:leg_open`
+  - `RH_IN:leg_tiptoe_degree`
+  - `RH_IN:frame_thickness`
+  - `RH_IN:lower_leg_depth`
+  - `RH_IN:upper_leg_depth`
+  - `RH_IN:leg_belly_depth`
+  - `RH_IN:frame_inset`
+  - `RH_OUT:desk`
+
+验证情况：
+
+- 已确认 `.ghx` 中存在显式 `RH_IN:*` / `RH_OUT:*` Group NickName
+- 尚未开始代码接入
+
+未解决问题：
+
+- 前端普通桌子参数状态还未建立
+- `/api/compute` 还未切换到新的 GH 文件和新的输入参数映射
+
+### 2026-04-19 - 普通桌子前端面板与聊天参数对齐
+
+计划：
+
+- 将前端参数面板从旧案几字段切换为普通桌子 GHX 的 `RH_IN:*` 字段
+- 保持已验证通过的 `/api/compute`、`rhino3dm` 解码和导出显示链路不变
+- 同步更新 `/api/chat` 的函数参数声明，避免聊天改动写入旧字段
+
+预计修改文件：
+
+- `src/App.tsx`
+- `server.ts`
+- `TABLE_EXPORT_COLLAB.md`
+
+风险：
+
+- 旧前端预览逻辑仍然是案几程序化模型，只能通过参数映射近似普通桌子形态
+- 若聊天函数仍保留旧字段，会导致前端状态和 GH 输入脱节
+
+已完成：
+
+- `src/App.tsx` 已将左侧控制面板改为三组普通桌子参数：
+  - `基础尺寸`
+  - `框架参数`
+  - `腿足参数`
+- 前端控件已直接对应以下 GH 输入：
+  - `length`
+  - `width`
+  - `round`
+  - `leg_width`
+  - `frame_edge_thickness`
+  - `leg_height`
+  - `leg_open`
+  - `leg_tiptoe_degree`
+  - `frame_thickness`
+  - `lower_leg_depth`
+  - `upper_leg_depth`
+  - `leg_belly_depth`
+  - `frame_inset`
+- `server.ts` 中 `update_table_params` 的 Gemini / GitHub Models 函数声明已同步改为同一套普通桌子字段
+
+验证情况：
+
+- `npm run lint` 通过
+- 旧案几字段在 `src/App.tsx` 的参数面板区域已清除
+
+未解决问题：
+
+- 当前左侧 3D 程序化预览仍是旧预览逻辑映射出来的近似普通桌子，不是 GH 的真实桌子几何
+- 还需要实际运行并点一次 `Export Precise Model`，确认 `mesh table 20210718 框架系列.ghx` 的导出结果与 `RH_OUT:desk` 一致
+
+### 2026-04-19 - Rhino 坐标轴与精确模型对齐修正
+
+计划：
+
+- 修正 Rhino `Z-up` 与 Three.js `Y-up` 的坐标轴差异
+- 对精确模型整体应用自动居中、落地和必要的朝向修正
+- 降低由于单面剔除导致的“像穿模”的视觉问题
+
+预计修改文件：
+
+- `src/App.tsx`
+- `TABLE_EXPORT_COLLAB.md`
+
+风险：
+
+- 自动旋转启发式若遇到长宽接近的桌子，可能需要后续再细调
+- 若 GH 后续自行调整了输出朝向，前端这层矫正可能需要回退
+
+已完成：
+
+- 顶点坐标已从 Rhino 轴系转换为 Three 轴系：
+  - `x`
+  - `z`
+  - `-y`
+- 精确模型从多部件组装完成后，会：
+  - 计算整体包围盒
+  - 按需要自动绕 `Y` 轴旋转 `90°`
+  - 自动居中到场景原点
+  - 自动下落到地面 `y = 0`
+- 精确模型材质已改为 `DoubleSide`，减少背面剔除造成的白边和缺面观感
+
+验证情况：
+
+- `npm run lint` 通过
+
+未解决问题：
+
+- 还需要你在浏览器里重新导出一次，确认这次桌面和腿已经对齐
+- 如果新朝向仍与程序化预览不一致，需要再根据实际包围盒日志做一次定向微调
