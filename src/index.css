@@ -29,11 +29,11 @@
   --color-user-bubble-text: #c8a97a;
 
   /* Text Role Sizes */
-  --size-brand-title: 62px;
-  --size-brand-subtitle: 8px;
+  --size-brand-title: 58px;
+  --size-brand-subtitle: 10px;
   --size-heading-panel: 9px;
   --size-heading-assistant: 9px;
-  --size-stat-primary: 30px;
+  --size-stat-primary: 24px;
   --size-stat-secondary: 30px;
   --size-stat-label: 7px;
   --size-ui-tab: 8px;
@@ -42,7 +42,7 @@
   --size-ui-value: 30px;
   --size-ui-button: 11px;
   --size-chat-message: 12px;
-  --size-nav-item: 8px;
+  --size-nav-item: 9px;
 
   /* Line Heights */
   --line-height-none: 0.9;
@@ -93,14 +93,14 @@
   }
 
   /* Metrics & Statistics */
-  .text-stat-value-primary {
+  .stat-value-primary {
     font-family: var(--font-sans);
     font-size: var(--size-stat-primary);
     font-weight: 400;
     line-height: var(--line-height-none);
     text-transform: uppercase;
   }
-  .text-stat-value-secondary {
+  .stat-value-secondary {
     font-family: var(--font-sans);
     font-size: var(--size-stat-secondary);
     font-weight: 400;
@@ -169,7 +169,7 @@
   }
   .chat-input-text {
     font-family: var(--font-serif);
-    font-size: 10px;
+    font-size: 11px;
   }
 }
 
@@ -207,7 +207,8 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar {
-    width: 3px;
+    width: 0;
+    height: 0;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
@@ -221,5 +222,10 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #2a2a2a;
+  }
+
+  .custom-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
