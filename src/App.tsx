@@ -11,7 +11,6 @@ import rhino3dm from 'rhino3dm';
 import rhino3dmWasmUrl from 'rhino3dm/rhino3dm.wasm?url';
 import { Box, Loader2, Send } from 'lucide-react';
 import { cn } from './lib/utils';
-import { ShowroomPanel } from './components/ShowroomPanel';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 const buildApiUrl = (path: string) => (API_BASE_URL ? `${API_BASE_URL}${path}` : path);
@@ -75,12 +74,8 @@ type ChatMessage = {
 };
 
 
-interface ShowroomResponse {
-  imageDataUrl: string;
-}
-
 type LeftTab = 'dimensions' | 'frame' | 'legs';
-type BottomTab = 'design' | 'showroom' | 'cart';
+type BottomTab = 'design'  | 'cart';
 type Material = 'blackwalnut' | 'rosewood';
 
 const ORDINARY_DEFAULTS: OrdinaryTableParams = {
@@ -123,7 +118,6 @@ const LEFT_TABS: Array<{ id: LeftTab; label: string }> = [
 
 const BOTTOM_NAV_ITEMS: Array<{ id: BottomTab; label: string }> = [
   { id: 'design', label: 'DESIGN' },
-  { id: 'showroom', label: 'SHOWROOM' },
   { id: 'cart', label: 'CART' },
 ];
 
@@ -564,7 +558,7 @@ const TableCanvas = forwardRef<TableCanvasHandle, {
     };
   }, [material, params.length, params.width, preciseModelData]);
 
-  return <div ref={containerRef} className="h-full w-full bg-[#0d0d0d]" />;
+  return <div ref={containerRef} className="h-full w-full bg-[#faf6ef]" />;
 });
 
 const CustomSlider = ({
@@ -588,14 +582,14 @@ const CustomSlider = ({
 }) => (
   <div className="flex flex-col gap-3">
     <div className="flex items-end justify-between gap-4">
-      <span className="text-ui-label-control text-[#aaaaaa]">{label}</span>
+      <span className="text-ui-label-control text-[#a79a8a]">{label}</span>
       <div className="flex items-end gap-2">
-        <span className="text-ui-value-control text-[#f0ebe0]">{formatSliderValue(value, displayMul)}</span>
-        <span className="mb-[3px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#555555]">{unit}</span>
+        <span className="text-ui-value-control text-[#6b4a3a]">{formatSliderValue(value, displayMul)}</span>
+        <span className="mb-[3px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#8f867a]">{unit}</span>
       </div>
     </div>
     <div className="relative flex h-4 w-full items-center">
-      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#222222]" />
+      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#42241C]" />
       <div
         className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-[#e63b2e]"
         style={{ width: `${((value - min) / (max - min)) * 100}%` }}
@@ -630,25 +624,45 @@ const MaterialCard = ({
     type="button"
     onClick={onClick}
     className={cn(
-      'flex-1 border px-4 py-3 text-left transition-colors duration-150',
-      active ? 'border-[#555555] bg-[#171717]' : 'border-[#222222] bg-transparent hover:bg-[#171717]',
+      'flex-1 border px-4 py-3 text-left transition-[border-color,color,box-shadow] duration-150',
+      active
+        ? 'border-[#7b4b38] bg-transparent shadow-[inset_0_0_0_1px_#7b4b38]'
+        : 'border-[#bda994] bg-transparent hover:border-[#42241C]',
     )}
   >
-    <span className="block font-serif text-[13px] text-[#f0ebe0]">{option.label}</span>
-    <span className="mt-1 block font-mono text-[7px] uppercase tracking-[0.14em] text-[#666666]">{option.note}</span>
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <span className={cn('block font-serif text-[13px]', active ? 'text-[#7b4b38]' : 'text-[#42241C]')}>{option.label}</span>
+        <span
+          className={cn(
+            'mt-1 block font-mono text-[7px] uppercase tracking-[0.14em]',
+            active ? 'text-[#7b4b38]' : 'text-[#8f867a]',
+          )}
+        >
+          {option.note}
+        </span>
+      </div>
+      <span
+        aria-hidden="true"
+        className={cn(
+          'mt-[2px] h-[8px] w-[8px] rounded-full border transition-colors duration-150',
+          active ? 'border-[#7b4b38] bg-[#7b4b38]' : 'border-[#cdb9a5] bg-transparent',
+        )}
+      />
+    </div>
   </button>
 );
 
 const BottomMetric = ({ label, value, hint, accent = false }: { label: string; value: string; hint?: string; accent?: boolean }) => (
-  <div className="flex h-[54px] flex-1 flex-col justify-center border-r border-[#222222] px-6 last:border-r-0">
-    <div className="text-stat-label text-[#555555]">{label}</div>
+  <div className="flex h-[54px] flex-1 flex-col justify-center border-r border-[#42241C] px-6 last:border-r-0">
+    <div className="text-stat-label text-[#8f867a]">{label}</div>
     <div
-      className={cn('mt-1 stat-value-primary', accent ? 'text-[#e63b2e]' : 'text-[#f0ebe0]')}
+      className={cn('mt-1 stat-value-primary', accent ? 'text-[#e63b2e]' : 'text-[#42241C]')}
       style={{ fontFamily: 'Bebas Neue, sans-serif' }}
     >
       {value}
     </div>
-    {hint ? <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#444444]">{hint}</div> : null}
+    {hint ? <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#9f978d]">{hint}</div> : null}
   </div>
 );
 
@@ -658,10 +672,6 @@ export default function App() {
   const [leftTab, setLeftTab] = useState<LeftTab>('dimensions');
   const [activeTab, setActiveTab] = useState<BottomTab>('design');
   const [preciseModelData, setPreciseModelData] = useState<PreciseModelData | null>(null);
-  const [showroomRoomImageUrl, setShowroomRoomImageUrl] = useState<string | null>(null);
-  const [showroomResultImageUrl, setShowroomResultImageUrl] = useState<string | null>(null);
-  const [showroomError, setShowroomError] = useState<string | null>(null);
-  const [isShowroomGenerating, setIsShowroomGenerating] = useState(false);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [isQuoteLoading, setIsQuoteLoading] = useState(false);
   const [isExportingPreciseModel, setIsExportingPreciseModel] = useState(false);
@@ -675,7 +685,6 @@ export default function App() {
   const tableCanvasRef = useRef<TableCanvasHandle | null>(null);
   const computeRequestIdRef = useRef(0);
   const quoteRequestIdRef = useRef(0);
-  const showroomRequestIdRef = useRef(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const hudScrollRef = useRef<HTMLDivElement>(null);
 
@@ -802,71 +811,6 @@ export default function App() {
     }
 
     return (await response.json()) as QuoteData;
-  };
-
-  const requestShowroomImage = async ({
-    roomImageDataUrl,
-    tableImageDataUrl,
-  }: {
-    roomImageDataUrl: string;
-    tableImageDataUrl: string;
-  }) => {
-    const response = await fetch(buildApiUrl('/api/showroom'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        roomImageDataUrl,
-        tableImageDataUrl,
-        material,
-        params: buildComputePayload(params),
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || `Showroom request failed with status ${response.status}`);
-    }
-
-    return (await response.json()) as ShowroomResponse;
-  };
-
-  const handleShowroomFileSelected = async (file: File) => {
-    const requestId = ++showroomRequestIdRef.current;
-    setShowroomError(null);
-    setIsShowroomGenerating(true);
-
-    try {
-      const [roomImageDataUrl, tableImageDataUrl] = await Promise.all([
-        readFileAsDataUrl(file),
-        Promise.resolve(tableCanvasRef.current?.captureTransparentSnapshot() ?? null),
-      ]);
-
-      if (!tableImageDataUrl) {
-        throw new Error('Current table snapshot is not ready yet.');
-      }
-
-      if (showroomRequestIdRef.current !== requestId) return;
-
-      setShowroomRoomImageUrl(roomImageDataUrl);
-      const result = await requestShowroomImage({
-        roomImageDataUrl,
-        tableImageDataUrl,
-      });
-
-      if (showroomRequestIdRef.current !== requestId) return;
-      setShowroomResultImageUrl(result.imageDataUrl);
-    } catch (error) {
-      if (showroomRequestIdRef.current !== requestId) return;
-      console.error('Showroom generation failed:', error);
-      setShowroomResultImageUrl(null);
-      setShowroomError(error instanceof Error ? error.message : 'Showroom generation failed.');
-    } finally {
-      if (showroomRequestIdRef.current === requestId) {
-        setIsShowroomGenerating(false);
-      }
-    }
   };
 
   const handleExportPreciseModel = async () => {
@@ -1005,25 +949,25 @@ export default function App() {
   const leadTime = quote ? quote.leadTime : isQuoteLoading ? 'QUOTING' : '—';
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-[#f0ebe0] selection:bg-[#e63b2e]/20 lg:h-screen lg:overflow-hidden">
-      <div className="grid min-h-screen grid-cols-1 border-[#222222] lg:h-screen lg:grid-cols-[320px_minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)_54px]">
-        <aside className="flex min-h-0 flex-col border-b border-r border-[#222222] lg:row-span-2 lg:border-b-0">
-          <div className="border-b border-[#222222] px-8 py-7">
-            <div className="text-brand-title text-[#f0ebe0]">
+    <div className="min-h-screen bg-[#faf6ef] text-[#2e2823] selection:bg-[#e63b2e]/20 lg:h-screen lg:overflow-hidden">
+      <div className="grid min-h-screen grid-cols-1 border-[#42241C] lg:h-screen lg:grid-cols-[320px_minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)_54px]">
+        <aside className="flex min-h-0 flex-col border-b border-r border-[#42241C] lg:row-span-2 lg:border-b-0">
+          <div className="border-b border-[#42241C] px-8 py-7">
+            <div className="text-brand-title text-[#42241C]">
               RESONANCE<span className="text-[#e63b2e]">.</span>
             </div>
-            <div className="mt-3 text-brand-subtitle text-[#555555]">BESPOKE FURNITURE</div>
+            <div className="mt-3 text-brand-subtitle text-[#8f867a]">BESPOKE FURNITURE</div>
           </div>
 
-          <div className="grid grid-cols-3 border-b border-[#222222]">
+          <div className="grid grid-cols-3 border-b border-[#42241C]">
             {LEFT_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setLeftTab(tab.id)}
                 className={cn(
-                  'flex items-center justify-center border-r border-[#222222] px-2 py-3 last:border-r-0',
-                  leftTab === tab.id ? 'bg-[#171717] text-[#f0ebe0]' : 'text-[#666666] hover:bg-[#171717] hover:text-[#f0ebe0]',
+                  'flex items-center justify-center px-2 py-3',
+                  leftTab === tab.id ? 'text-[#42241C]' : 'text-[#8f867a] hover:text-[#42241C]',
                 )}
               >
                 <span className="text-ui-tab">{tab.label}</span>
@@ -1052,8 +996,8 @@ export default function App() {
             </div>
 
             {leftTab === 'dimensions' ? (
-              <div className="mt-10 border-t border-[#222222] pt-6">
-                <div className="text-heading-panel text-[#666666]">MATERIAL</div>
+              <div className="mt-8 ">
+                <div className="text-heading-panel text-[#8f867a]">MATERIAL</div>
                 <div className="mt-4 flex gap-3">
                   {MATERIAL_OPTIONS.map((option) => (
                     <MaterialCard
@@ -1068,13 +1012,13 @@ export default function App() {
             ) : null}
           </div>
 
-          <div className="grid grid-cols-2 border-t border-[#222222]">
+          <div className="grid grid-cols-2 border-t border-[#42241C]">
             <BottomMetric label="EST. PRICE" value={currentPrice} accent />
             <BottomMetric label="LEAD TIME" value={leadTime} />
           </div>
         </aside>
 
-        <main className="relative min-h-[420px] border-b border-[#222222] lg:min-h-0 lg:border-b-0">
+        <main className="relative min-h-[420px] border-b border-[#42241C] lg:min-h-0 lg:border-b-0">
           <div className="absolute inset-0 z-0">
             <TableCanvas ref={tableCanvasRef} params={params} material={material} preciseModelData={preciseModelData} />
           </div>
@@ -1083,7 +1027,7 @@ export default function App() {
             <div className="pointer-events-none absolute inset-x-0 top-10 z-30 flex justify-center">
               <div
                 className={cn(
-                  'pointer-events-auto flex min-w-[380px] max-w-[640px] flex-col overflow-hidden border border-[#2b2b2b] bg-[#121212]/94 px-6 py-5 shadow-[0_22px_80px_rgba(0,0,0,0.42)] backdrop-blur-md transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+                  'pointer-events-auto flex min-w-[380px] max-w-[640px] flex-col overflow-hidden border border-[#42241C] bg-[#f7f2ea]/96 px-6 py-5 shadow-[0_22px_80px_rgba(66,36,28,0.12)] backdrop-blur-md transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
                   hudExiting
                     ? '-translate-y-6 scale-[0.96] opacity-0 blur-[2px]'
                     : 'translate-y-0 scale-100 opacity-100 blur-0',
@@ -1097,12 +1041,12 @@ export default function App() {
                   {hudItems.map((item) => (
                     <div
                       key={item.key}
-                      className="grid grid-cols-[120px_1fr_20px_1fr] items-center gap-3 border-b border-[#252525] py-3 last:border-b-0"
+                      className="grid grid-cols-[120px_1fr_20px_1fr] items-center gap-3 border-b border-[#dfd2c2] py-3 last:border-b-0"
                     >
-                      <span className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#8f8f8f]">{item.label}</span>
-                      <span className="text-center font-mono text-[10px] uppercase tracking-[0.06em] text-[#777777]">{item.previousValue}</span>
+                      <span className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#8f867a]">{item.label}</span>
+                      <span className="text-center font-mono text-[10px] uppercase tracking-[0.06em] text-[#a79a8a]">{item.previousValue}</span>
                       <span className="text-center font-mono text-[10px] uppercase tracking-[0.04em] text-[#e63b2e]">→</span>
-                      <span className="text-center font-mono text-[10px] uppercase tracking-[0.06em] text-[#f0ebe0]">{item.nextValue}</span>
+                      <span className="text-center font-mono text-[10px] uppercase tracking-[0.06em] text-[#42241C]">{item.nextValue}</span>
                     </div>
                   ))}
                 </div>
@@ -1111,43 +1055,33 @@ export default function App() {
           ) : null}
 
           <div className="pointer-events-none absolute inset-x-4 top-8 bottom-4 z-10 lg:inset-x-6 lg:top-8 lg:bottom-4">
-            <div className="absolute left-0 top-[-18px] font-mono text-[8px] uppercase tracking-[0.22em] text-[#555555]">
+            <div className="absolute left-0 top-[-18px] font-mono text-[8px] uppercase tracking-[0.22em] text-[#8f867a]">
               3D PREVIEW
             </div>
             <div className="absolute right-0 top-[-18px] font-mono text-[8px] uppercase tracking-[0.16em] text-[#e63b2e]">
               {preciseModelData ? 'RHINO MODEL SYNCED' : 'LIVE PARAMETRIC VIEW'}
             </div>
-            <div className="absolute left-0 top-0 h-[14px] w-[14px] border-l border-t border-[#2a2a2a]" />
-            <div className="absolute right-0 top-0 h-[14px] w-[14px] border-r border-t border-[#2a2a2a]" />
-            <div className="absolute bottom-0 left-0 h-[14px] w-[14px] border-b border-l border-[#2a2a2a]" />
-            <div className="absolute bottom-0 right-0 h-[14px] w-[14px] border-b border-r border-[#2a2a2a]" />
+            <div className="absolute left-0 top-0 h-[14px] w-[14px] border-l border-t border-[#8f867a]" />
+            <div className="absolute right-0 top-0 h-[14px] w-[14px] border-r border-t border-[#8f867a]" />
+            <div className="absolute bottom-0 left-0 h-[14px] w-[14px] border-b border-l border-[#8f867a]" />
+            <div className="absolute bottom-0 right-0 h-[14px] w-[14px] border-b border-r border-[#8f867a]" />
           </div>
 
-                    {activeTab === 'showroom' ? (
-            <ShowroomPanel
-              isGenerating={isShowroomGenerating}
-              roomPreviewUrl={showroomRoomImageUrl}
-              resultImageUrl={showroomResultImageUrl}
-              error={showroomError}
-              onFileSelected={(file) => void handleShowroomFileSelected(file)}
-            />
-          ) : null}
-
           {activeTab === 'cart' ? (
-            <div className="absolute inset-x-8 top-24 z-20 max-w-[320px] border border-[#222222] bg-[#0d0d0d]/90 p-5 backdrop-blur-sm">
-              <div className="text-heading-panel text-[#aaaaaa]">CONFIG SUMMARY</div>
+            <div className="absolute inset-x-8 top-24 z-20 max-w-[320px] border border-[#42241C] bg-[#f7f2ea]/95 p-5 backdrop-blur-sm">
+              <div className="text-heading-panel text-[#42241C]">CONFIG SUMMARY</div>
               <p className="mt-3 font-serif text-[12px] leading-6 text-[#9d9588]">
                 Current pricing, lead time, and structured quote details are ready for downstream order flow.
               </p>
               {quote?.breakdown?.length ? (
-                <div className="mt-4 space-y-2 border-t border-[#222222] pt-4">
+                <div className="mt-4 space-y-2 border-t border-[#42241C] pt-4">
                   {quote.breakdown.map((item) => (
                     <div
                       key={item.label}
                       className="flex items-center justify-between font-mono text-[8px] uppercase tracking-[0.12em] text-[#7d766b]"
                     >
                       <span>{item.label}</span>
-                      <span className="text-[#f0ebe0]">¥{item.value.toLocaleString()}</span>
+                      <span className="text-[#42241C]">¥{item.value.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -1156,39 +1090,56 @@ export default function App() {
           ) : null}
         </main>
 
-        <aside className="flex min-h-[420px] flex-col border-l border-r border-[#222222] lg:row-span-2 lg:min-h-0">
-          <div className="flex items-center gap-3 border-b border-[#222222] px-6 py-6">
-            <div className="h-[8px] w-[8px] rounded-full bg-[#e63b2e]" />
-            <div className="text-heading-assistant text-[#f0ebe0]">ASSISTANT</div>
+        <aside className="flex min-h-[420px] flex-col border-l border-r border-[#42241C] bg-[#faf7f1] lg:row-span-2 lg:min-h-0">
+          <div className="flex items-center gap-3 border-b border-[#42241C] px-6 py-4">
+            <div className="text-heading-assistant text-[#42241C]">Design Notes</div>
           </div>
 
-          <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto px-6 py-6">
-            {messages.map((message, index) => {
-              const isAssistant = message.role === 'assistant';
-              return (
-                <div key={`${message.role}-${index}`} className={cn('flex', isAssistant ? 'justify-start' : 'justify-end')}>
+          <div className="custom-scrollbar flex-1 overflow-y-auto px-7 py-6">
+            <div className="flex flex-col gap-6">
+              {messages.map((message, index) => {
+                const isAssistant = message.role === 'assistant';
+                return (
                   <div
+                    key={`${message.role}-${index}`}
                     className={cn(
-                      'max-w-[88%] border px-5 py-4 chat-message-text',
-                      isAssistant
-                        ? 'border-[#1e1e1e] bg-[#171717] text-[#f0ebe0]'
-                        : 'border-[#2a1b0f] bg-[#1c1208] text-[#c8a97a]',
+                    'flex w-full flex-col gap-2.5',
+                    isAssistant ? 'items-start' : 'items-start',
                     )}
                   >
-                    {message.content}
+                    <div
+                      className={cn(
+                        'chat-note-label',
+                        isAssistant ? 'text-[#9f978d]' : 'text-[#b0a698]',
+                      )}
+                    >
+                      {isAssistant ? "Editor's Insight" : 'Inquiry'}
+                    </div>
+                    <div
+                      className={cn(
+                          'chat-note-block w-full',
+                          isAssistant
+                            ? 'text-[#332b25]'
+                          : 'bg-[#f0e7dc] px-5 py-4 text-[#5b3728]',
+                      )}
+                    >
+                      {message.content}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {isTyping ? (
+                <div className="flex flex-col items-start gap-2.5">
+                  <div className="chat-note-label text-[#9f978d]">Editor&apos;s Insight</div>
+                  <div className="flex items-center gap-3 text-[#7b7368]">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#e63b2e]" />
+                    <span className="chat-note-block text-[11px]">Refining the next note...</span>
                   </div>
                 </div>
-              );
-            })}
-
-            {isTyping ? (
-              <div className="flex justify-start">
-                <div className="border border-[#1e1e1e] bg-[#171717] px-5 py-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#e63b2e]" />
-                </div>
-              </div>
-            ) : null}
-            <div ref={chatEndRef} />
+              ) : null}
+              <div ref={chatEndRef} />
+            </div>
           </div>
 
           <form
@@ -1196,7 +1147,7 @@ export default function App() {
               event.preventDefault();
               void handleSendMessage();
             }}
-            className="h-[54px] border-t border-[#222222]"
+            className="h-[54px] border-t border-[#42241C] bg-[#fcfaf6]"
           >
             <div className="relative h-full">
               <input
@@ -1205,12 +1156,12 @@ export default function App() {
                 onChange={(event) => setInputValue(event.target.value)}
                 disabled={isTyping}
                 placeholder="询问比例、工艺、材质或设计建议..."
-                className="chat-input-text h-full w-full border-0 bg-[#0d0d0d] px-4 pr-14 text-[#f0ebe0] placeholder:text-[#555555] outline-none transition-colors duration-150 focus:bg-[#171717]"
+                className="chat-input-text h-full w-full border-0 bg-[#fcfaf6] px-6 pr-14 text-[#5a4d43] placeholder:text-[#8f867a] outline-none"
               />
               <button
                 type="submit"
                 disabled={isTyping || !inputValue.trim()}
-                className="absolute right-0 top-0 flex h-full w-[54px] items-center justify-center border-l border-[#222222] text-[#666666] transition-colors duration-150 hover:bg-[#171717] hover:text-[#f0ebe0] disabled:opacity-40"
+                className="absolute right-0 top-0 flex h-full w-[54px] items-center justify-center border-l border-[#42241C] text-[#b8aea1] transition-colors duration-150 hover:bg-[#f1e7db] hover:text-[#42241C] active:bg-[#e8dccd] disabled:opacity-40"
               >
                 <Send className="h-[14px] w-[14px]" strokeWidth={1.8} />
               </button>
@@ -1218,18 +1169,18 @@ export default function App() {
           </form>
         </aside>
 
-        <div className="flex h-[54px] items-stretch border-t border-[#222222] lg:col-start-2 lg:row-start-2">
+        <div className="flex h-[54px] items-stretch border-t border-[#42241C] lg:col-start-2 lg:row-start-2">
           <button
             type="button"
             onClick={() => void handleExportPreciseModel()}
             disabled={isExportingPreciseModel}
-            className="flex min-w-[236px] items-center justify-center gap-3 bg-[#e63b2e] px-6 text-ui-button text-white transition-colors duration-150 hover:bg-[#c82d22] disabled:cursor-wait disabled:bg-[#9e342a]"
+            className="flex min-w-[236px] items-center justify-center gap-3 bg-[#5a3022] px-6 text-ui-button text-[#fbf6ef] transition-colors duration-150 hover:text-[#f3d5c6] disabled:cursor-wait disabled:bg-[#9e7e6f]"
           >
             {isExportingPreciseModel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Box className="h-4 w-4" />}
             <span>{isExportingPreciseModel ? 'EXPORTING' : 'FROM RHINO'}</span>
           </button>
 
-          <div className="grid flex-1 grid-cols-3 border-l border-[#222222]">
+          <div className="grid flex-1 grid-cols-2">
             {BOTTOM_NAV_ITEMS.map((item) => {
               const active = activeTab === item.id;
               return (
@@ -1238,8 +1189,8 @@ export default function App() {
                   type="button"
                   onClick={() => setActiveTab(item.id)}
                   className={cn(
-                    'flex min-w-[78px] items-center justify-center border-l border-[#222222] px-4 transition-colors duration-150 first:border-l-0',
-                    active ? 'bg-[#171717] text-[#f0ebe0]' : 'text-[#555555] hover:bg-[#171717] hover:text-[#f0ebe0]',
+                    'flex min-w-[78px] items-center justify-center px-4 transition-colors duration-150',
+                    active ? 'text-[#42241C]' : 'text-[#8f867a] hover:text-[#42241C]',
                   )}
                 >
                   <span className="text-nav-item">{item.label}</span>

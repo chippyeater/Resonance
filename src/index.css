@@ -6,41 +6,41 @@
   --font-sans: "Bebas Neue", sans-serif;
   --font-mono: "DM Mono", monospace;
   
-  --color-brand-coral: #D2694E;
-  --color-brand-teal: #283F3E;
-  --color-brand-brown: #824E40;
-  --color-brand-cream: #F5F1E9;
-  --color-brand-ink: #283F3E;
+  --color-brand-coral: #d97a5c;
+  --color-brand-teal: #8f7b6b;
+  --color-brand-brown: #7b4b38;
+  --color-brand-cream: #f5f1e9;
+  --color-brand-ink: #3f2f27;
 }
 
 /* Typography Tokens */
 :root {
-  --color-app-bg: #0d0d0d;
-  --color-panel-bg: #171717;
-  --color-panel-hover: #1a1a1a;
-  --color-border-main: #222222;
-  --color-border-subtle: #1e1e1e;
+  --color-app-bg: #f5f1ea;
+  --color-panel-bg: #f8f5ef;
+  --color-panel-hover: #efe8de;
+  --color-border-main: #42241c;
+  --color-border-subtle: #d7c8b5;
   --color-accent: #e63b2e;
-  --color-text-main: #f0ebe0;
-  --color-text-secondary: #aaaaaa;
-  --color-text-muted: #666666;
-  --color-text-faint: #555555;
-  --color-user-bubble: #1c1208;
-  --color-user-bubble-text: #c8a97a;
+  --color-text-main: #2e2823;
+  --color-text-secondary: #8f867a;
+  --color-text-muted: #a9a095;
+  --color-text-faint: #b8aea1;
+  --color-user-bubble: #ece1d4;
+  --color-user-bubble-text: #5b3728;
 
   /* Text Role Sizes */
   --size-brand-title: 58px;
   --size-brand-subtitle: 10px;
-  --size-heading-panel: 9px;
-  --size-heading-assistant: 9px;
+  --size-heading-panel: 20px;
+  --size-heading-assistant: 24px;
   --size-stat-primary: 24px;
   --size-stat-secondary: 30px;
   --size-stat-label: 7px;
-  --size-ui-tab: 8px;
-  --size-ui-group: 10px;
-  --size-ui-control: 8px;
+  --size-ui-tab: 10px;
+  --size-ui-group: 14px;
+  --size-ui-control: 10px;
   --size-ui-value: 30px;
-  --size-ui-button: 11px;
+  --size-ui-button: 16px;
   --size-chat-message: 12px;
   --size-nav-item: 9px;
 
@@ -85,10 +85,10 @@
     text-transform: uppercase;
   }
   .text-heading-assistant {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--size-heading-assistant);
-    font-weight: 500;
-    letter-spacing: 0.16em;
+    font-weight: 400;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 
@@ -167,6 +167,18 @@
     font-size: var(--size-chat-message);
     line-height: 1.75;
   }
+  .chat-note-label {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .chat-note-block {
+    font-family: var(--font-serif);
+    font-size: 12px;
+    line-height: 1.95;
+  }
   .chat-input-text {
     font-family: var(--font-serif);
     font-size: 11px;
@@ -216,12 +228,12 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #222222;
+    background: #d2c3b3;
     border-radius: 0;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #2a2a2a;
+    background: #bda994;
   }
 
   .custom-scrollbar {

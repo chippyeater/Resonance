@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -29,6 +30,7 @@
     "rhino3dm": "^8.17.0",
     "tailwind-merge": "^3.5.0",
     "three": "^0.183.2",
+    "vercel": "^52.0.0",
     "vite": "^6.2.0"
   },
   "devDependencies": {
