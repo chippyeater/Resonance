@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -30,6 +30,72 @@ interface OrdinaryTableParams {
   leg_belly_depth: number;
   frame_inset: number;
 }
+
+type DesktopZone = {
+  id: string;
+  shape?: 'rect';
+  x_ratio: number;
+  z_ratio: number;
+  width_ratio: number;
+  depth_ratio: number;
+  color?: string | null;
+  opacity?: number | null;
+  border_color?: string | null;
+  border_opacity?: number | null;
+  border_width?: number | null;
+  label?: string | null;
+};
+
+type DesktopInsert =
+  | {
+      id: string;
+      kind: 'grommet';
+      x_ratio: number;
+      z_ratio: number;
+      radius?: number | null;
+      color?: string | null;
+    }
+  | {
+      id: string;
+      kind: 'cup_holder';
+      x_ratio: number;
+      z_ratio: number;
+      radius?: number | null;
+      color?: string | null;
+    }
+  | {
+      id: string;
+      kind: 'power_socket';
+      x_ratio: number;
+      z_ratio: number;
+      width?: number | null;
+      depth?: number | null;
+      color?: string | null;
+    }
+  | {
+      id: string;
+      kind: 'tablet_slot';
+      x_ratio: number;
+      z_ratio: number;
+      width?: number | null;
+      depth?: number | null;
+      length?: number | null;
+      rotation?: number | null;
+      color?: string | null;
+    };
+
+// 桌面定制层参数先独立定义，后续接入 Three.js 渲染时不影响 Rhino 主体参数。
+type DesktopCustomizationParams = {
+  zones?: DesktopZone[] | null;
+  // inserts 统一承载线孔盖、杯孔、电源插槽、平板槽等桌面嵌件。
+  inserts?: DesktopInsert[] | null;
+};
+
+// 前端运行态参数：主体桌子参数之外，再挂桌面定制开关和配置。
+type TableParams = OrdinaryTableParams & {
+  enable_desktop_customization: boolean;
+  desktop_customization: DesktopCustomizationParams | null;
+};
 
 interface PreciseMeshData {
   vertices: number[];
@@ -68,14 +134,95 @@ interface QuoteData {
   breakdown: QuoteBreakdownItem[];
   version: string;
 }
+
+interface StructureAssessment {
+  structure_level: 'low' | 'medium' | 'high';
+  stability_score: number;
+  risk_tags: string[];
+  recommendations: string[];
+}
+interface VariantScores {
+  lightness: number;
+  stability: number;
+  cost_efficiency: number;
+  premium_feel: number;
+}
+
+interface VariantApiItem {
+  id: string;
+  name: string;
+  consumer_summary: string;
+  params: OrdinaryTableParams;
+  success: boolean;
+  result?: any;
+  error?: string;
+  scores: VariantScores;
+}
+
+interface VariantCardData {
+  id: string;
+  name: string;
+  consumer_summary: string;
+  params: OrdinaryTableParams;
+  success: boolean;
+  error?: string;
+  scores: VariantScores;
+  model: PreciseModelData | null;
+  quote: QuoteData | null;
+  structureAssessment: StructureAssessment | null;
+}
+
+interface ComputeApiResponse {
+  quote?: QuoteData;
+  structureAssessment?: StructureAssessment;
+}
+interface GenerateVariantsApiResponse {
+  success: boolean;
+  message?: string;
+  variants?: VariantApiItem[];
+  error?: string;
+}
+interface ChatApiResponse {
+  mode?: 'chat' | 'variants';
+  text?: string;
+  functionCalls?: Array<{ name: string; args: Record<string, unknown> }>;
+  debugRaw?: unknown;
+  variants?: VariantApiItem[];
+}
+const QUOTE_BREAKDOWN_LABELS: Record<string, string> = {
+  'Base fabrication': '基础制作',
+  'Material volume': '材料用量',
+  'Surface finishing': '表面处理',
+  'Craft complexity': '工艺复杂度',
+  'Packing and logistics': '包装与运输',
+};
+
+const STRUCTURE_RISK_LABELS: Record<string, string> = {
+  large_span: '大跨度',
+  thin_legs: '腿部偏细',
+  weak_frame_support: '框架偏弱',
+  narrow_footprint: '落地偏窄',
+  max_size_risk: '尺寸上限风险',
+  oversized_top: '桌面偏大',
+  complex_assembly: '装配复杂',
+};
+
+const VARIANT_SCORE_LABELS: Array<{ key: keyof VariantScores; label: string }> = [
+  { key: 'lightness', label: '轻盈' },
+  { key: 'stability', label: '稳定性' },
+  { key: 'cost_efficiency', label: '效率' },
+  { key: 'premium_feel', label: '质感' },
+];
+
 type ChatMessage = {
   role: 'assistant' | 'user';
   content: string;
+  variants?: VariantCardData[];
 };
 
 
 type LeftTab = 'dimensions' | 'frame' | 'legs';
-type BottomTab = 'design'  | 'cart';
+type BottomTab = 'design'  | 'quote';
 type Material = 'blackwalnut' | 'rosewood';
 
 const ORDINARY_DEFAULTS: OrdinaryTableParams = {
@@ -92,6 +239,16 @@ const ORDINARY_DEFAULTS: OrdinaryTableParams = {
   upper_leg_depth: 0.076161,
   leg_belly_depth: 0,
   frame_inset: 0.012262,
+};
+
+// 默认不带任何桌面定制元素，Three.js 看到 null 时直接不渲染叠加层。
+const DEFAULT_DESKTOP_CUSTOMIZATION: DesktopCustomizationParams | null = null;
+
+// 默认关闭桌面定制层；后续即使写入配置，也可以由布尔开关统一控制启停。
+const DEFAULT_TABLE_PARAMS: TableParams = {
+  ...ORDINARY_DEFAULTS,
+  enable_desktop_customization: false,
+  desktop_customization: DEFAULT_DESKTOP_CUSTOMIZATION,
 };
 
 const ORDINARY_LIMITS = {
@@ -118,7 +275,7 @@ const LEFT_TABS: Array<{ id: LeftTab; label: string }> = [
 
 const BOTTOM_NAV_ITEMS: Array<{ id: BottomTab; label: string }> = [
   { id: 'design', label: 'DESIGN' },
-  { id: 'cart', label: 'CART' },
+  { id: 'quote', label: 'QUOTE' },
 ];
 
 const SLIDER_SECTIONS: Record<
@@ -174,7 +331,7 @@ const MATERIAL_OPTIONS: Array<{ id: Material; label: string; note: string }> = [
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
     role: 'assistant' as const,
-    content: '欢迎来到 Resonance。我可以根据你的使用场景、尺寸偏好和木作风格，协助完成桌子的定制。',
+    content: '欢迎来到 Resonance。我可以根据你的使用场景、尺寸偏好和桌作风格，协助完成桌子的定制。',
   },
 ];
 
@@ -258,7 +415,44 @@ const extractPreciseMeshData = (mesh: any, unitScale = 1): PreciseMeshData => {
   };
 };
 
+const extractCustomMeshData = (rawMesh: any, unitScale = 1): PreciseMeshData => {
+  const sourceVertices = Array.isArray(rawMesh?.vertices) ? rawMesh.vertices : [];
+  const sourceFaces = Array.isArray(rawMesh?.faces) ? rawMesh.faces : [];
+  const vertices: number[] = [];
+  const faces: number[] = [];
+
+  for (let i = 0; i + 2 < sourceVertices.length; i += 3) {
+    const x = Number(sourceVertices[i]) * unitScale;
+    const y = Number(sourceVertices[i + 1]) * unitScale;
+    const z = Number(sourceVertices[i + 2]) * unitScale;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+    vertices.push(x, z, -y);
+  }
+
+  for (let i = 0; i + 2 < sourceFaces.length; i += 3) {
+    const a = Number(sourceFaces[i]);
+    const b = Number(sourceFaces[i + 1]);
+    const c = Number(sourceFaces[i + 2]);
+    if (!Number.isInteger(a) || !Number.isInteger(b) || !Number.isInteger(c)) continue;
+    faces.push(a, b, c);
+  }
+
+  return { vertices, faces };
+};
+
 const decodeComputeMeshOutput = async (outputItem: any, unitScale: number) => {
+  if (outputItem?.type === 'mesh_data') {
+    const rawMesh =
+      typeof outputItem?.data === 'string'
+        ? JSON.parse(outputItem.data)
+        : outputItem?.data;
+    const meshData = extractCustomMeshData(rawMesh, unitScale);
+    if (meshData.vertices.length === 0 || meshData.faces.length === 0) {
+      throw new Error('Custom mesh output did not contain vertices/faces.');
+    }
+    return meshData;
+  }
+
   if (outputItem?.type !== 'Rhino.Geometry.Mesh') {
     throw new Error(`Expected Rhino.Geometry.Mesh, received ${outputItem?.type ?? 'unknown output type'}.`);
   }
@@ -297,7 +491,7 @@ const parsePreciseMeshFromComputeResponse = async (result: any): Promise<Precise
   for (const path of paths) {
     const branchItems = Array.isArray(tree?.[path]) ? tree[path] : [];
     for (const outputItem of branchItems) {
-      if (outputItem?.type !== 'Rhino.Geometry.Mesh') {
+      if (outputItem?.type !== 'Rhino.Geometry.Mesh' && outputItem?.type !== 'mesh_data') {
         continue;
       }
       meshItemCount += 1;
@@ -319,6 +513,82 @@ const parsePreciseMeshFromComputeResponse = async (result: any): Promise<Precise
     meshes,
   };
 };
+
+const parseComputeApiResponse = async (
+  result: any,
+): Promise<{ model: PreciseModelData; quote: QuoteData | null; structureAssessment: StructureAssessment | null }> => {
+  const model = await parsePreciseMeshFromComputeResponse(result);
+  const quote = result?.quote ?? null;
+  const structureAssessment = result?.structureAssessment ?? null;
+  return { model, quote, structureAssessment };
+};
+
+const parseVariantApiResponse = async (result: GenerateVariantsApiResponse): Promise<VariantCardData[]> => {
+  const variants = Array.isArray(result?.variants) ? result.variants : [];
+  return await Promise.all(
+    variants.map(async (variant) => {
+      if (!variant.success || !variant.result) {
+        return {
+          id: variant.id,
+          name: variant.name,
+          consumer_summary: variant.consumer_summary,
+          params: variant.params,
+          success: false,
+          error: variant.error,
+          scores: variant.scores,
+          model: null,
+          quote: null,
+          structureAssessment: null,
+        };
+      }
+
+      try {
+        const parsed = await parseComputeApiResponse(variant.result);
+        return {
+          id: variant.id,
+          name: variant.name,
+          consumer_summary: variant.consumer_summary,
+          params: variant.params,
+          success: true,
+          scores: variant.scores,
+          model: parsed.model,
+          quote: parsed.quote,
+          structureAssessment: parsed.structureAssessment,
+        };
+      } catch (error) {
+        return {
+          id: variant.id,
+          name: variant.name,
+          consumer_summary: variant.consumer_summary,
+          params: variant.params,
+          success: false,
+          error: error instanceof Error ? error.message : 'Variant preview parse failed',
+          scores: variant.scores,
+          model: null,
+          quote: null,
+          structureAssessment: null,
+        };
+      }
+    }),
+  );
+};
+
+// 仅提取 Rhino / LLM 当前需要的主体桌体参数，桌面定制字段保留在前端本地。
+const extractBaseTableParams = (params: TableParams): OrdinaryTableParams => ({
+  length: params.length,
+  width: params.width,
+  round: params.round,
+  leg_width: params.leg_width,
+  frame_edge_thickness: params.frame_edge_thickness,
+  leg_height: params.leg_height,
+  leg_open: params.leg_open,
+  leg_tiptoe_degree: params.leg_tiptoe_degree,
+  frame_thickness: params.frame_thickness,
+  lower_leg_depth: params.lower_leg_depth,
+  upper_leg_depth: params.upper_leg_depth,
+  leg_belly_depth: params.leg_belly_depth,
+  frame_inset: params.frame_inset,
+});
 
 const buildComputePayload = (nextParams: OrdinaryTableParams) => ({
   length: nextParams.length * 1000,
@@ -377,8 +647,273 @@ const readFileAsDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+// 用 Shape 挤出一个完整圆角的长槽截面，避免 tablet_slot 看起来像普通矩形块。
+const createRoundedSlotGeometry = (length: number, depth: number, height: number) => {
+  const radius = Math.min(depth / 2, length / 2);
+  const halfLength = length / 2;
+  const halfDepth = depth / 2;
+  const shape = new THREE.Shape();
+
+  shape.moveTo(-halfLength + radius, -halfDepth);
+  shape.lineTo(halfLength - radius, -halfDepth);
+  shape.absarc(halfLength - radius, 0, radius, -Math.PI / 2, Math.PI / 2, false);
+  shape.lineTo(-halfLength + radius, halfDepth);
+  shape.absarc(-halfLength + radius, 0, radius, Math.PI / 2, (Math.PI * 3) / 2, false);
+  shape.closePath();
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: height,
+    bevelEnabled: false,
+    curveSegments: 24,
+  });
+  geometry.rotateX(Math.PI / 2);
+  geometry.translate(0, height / 2, 0);
+  return geometry;
+};
+
+const FAKE_DESKTOP_ZONES: DesktopZone[] = [
+  {
+    id: 'focus-zone',
+    shape: 'rect',
+    x_ratio: -0.12,
+    z_ratio: 0,
+    width_ratio: 0.38,
+    depth_ratio: 0.62,
+    color: '#ffffff',
+    opacity: 0.3,
+    border_color: '#324456',
+    border_opacity: 0.92,
+    border_width: 0.003,
+    label: '主工作区',
+  },
+];
+
+const FAKE_DESKTOP_INSERTS: DesktopInsert[] = [
+  {
+    id: 'rear-left-grommet',
+    kind: 'grommet',
+    x_ratio: -0.28,
+    z_ratio: 0.34,
+    radius: 0.028,
+    color: '#1e1d1b',
+  },
+  {
+    id: 'rear-right-power',
+    kind: 'power_socket',
+    x_ratio: 0.24,
+    z_ratio: 0.32,
+    width: 0.16,
+    depth: 0.085,
+    color: '#2a2724',
+  },
+  {
+    id: 'front-center-tablet-slot',
+    kind: 'tablet_slot',
+    x_ratio: 0,
+    z_ratio: -0.18,
+    length: 0.24,
+    depth: 0.018,
+    width: 0.24,
+    rotation: 0,
+    color: '#2f2b27',
+  },
+  {
+    id: 'front-right-cup-holder',
+    kind: 'cup_holder',
+    x_ratio: 0.28,
+    z_ratio: -0.16,
+    radius: 0.04,
+    color: '#25211d',
+  },
+];
+
+// 桌面定制层挂在主体桌子 group 下方，后续 overlay 和各类桌面嵌件都挂到这里。
+const createDesktopCustomizationLayer = (params: TableParams, tabletopBounds: THREE.Box3) => {
+  const group = new THREE.Group();
+  group.name = 'desktop-customization-layer';
+
+  // 这里先用假数据验证桌面分区的坐标和视觉，后续再切回真实配置。
+  if (!params.enable_desktop_customization) {
+    return group;
+  }
+
+  const zones = FAKE_DESKTOP_ZONES;
+  const inserts = FAKE_DESKTOP_INSERTS;
+  // 高度直接贴当前主体 mesh 的顶面，而不是再用参数去猜。
+  const topSurfaceY = tabletopBounds.max.y;
+  const tableLength = tabletopBounds.max.x - tabletopBounds.min.x;
+  const tableDepth = tabletopBounds.max.z - tabletopBounds.min.z;
+  const tableCenterX = (tabletopBounds.max.x + tabletopBounds.min.x) / 2;
+  const tableCenterZ = (tabletopBounds.max.z + tabletopBounds.min.z) / 2;
+  const overlayLift = 0.0015;
+  const overlayHeight = 0.02;
+  const safeInsetBase = Math.max(params.round, 0.01);
+
+  for (const zone of zones) {
+    const borderWidth = zone.border_width ?? 0.003;
+    const safeInset = Math.max(safeInsetBase, borderWidth * 2);
+    const usableLength = Math.max(tableLength - safeInset * 2, tableLength * 0.2);
+    const usableDepth = Math.max(tableDepth - safeInset * 2, tableDepth * 0.2);
+    const zoneWidth = usableLength * zone.width_ratio;
+    const zoneDepth = usableDepth * zone.depth_ratio;
+    const zoneCenterX = tableCenterX + usableLength * zone.x_ratio;
+    const zoneCenterZ = tableCenterZ + usableDepth * zone.z_ratio;
+
+    // 先做一个略有厚度的半透明实体块，方便确认桌面分区的体积感。
+    const overlay = new THREE.Mesh(
+      new THREE.BoxGeometry(zoneWidth, overlayHeight, zoneDepth),
+      new THREE.MeshStandardMaterial({
+        color: zone.color ?? '#708396',
+        transparent: true,
+        opacity: zone.opacity ?? 0.1,
+        depthWrite: false,
+        roughness: 0.42,
+        metalness: 0.02,
+      }),
+    );
+    overlay.position.set(zoneCenterX, topSurfaceY + overlayLift + overlayHeight / 2, zoneCenterZ);
+    group.add(overlay);
+  }
+
+  for (const insert of inserts) {
+    if (insert.kind === 'grommet') {
+      const radius = insert.radius ?? 0.028;
+      const safeInset = Math.max(safeInsetBase, radius + 0.008);
+      const usableLength = Math.max(tableLength - safeInset * 2, tableLength * 0.2);
+      const usableDepth = Math.max(tableDepth - safeInset * 2, tableDepth * 0.2);
+      const centerX = tableCenterX + usableLength * insert.x_ratio;
+      const centerZ = tableCenterZ + usableDepth * insert.z_ratio;
+
+      // grommet 先用深色圆片表示，只做桌面视觉标记，不修改主体 mesh。
+      const cap = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, 0.004, 40),
+        new THREE.MeshStandardMaterial({
+          color: insert.color ?? '#1e1d1b',
+          roughness: 0.55,
+          metalness: 0.08,
+        }),
+      );
+      cap.position.set(centerX, topSurfaceY + 0.0025, centerZ);
+      group.add(cap);
+      continue;
+    }
+
+    if (insert.kind === 'power_socket') {
+      const socketWidth = insert.width ?? 0.16;
+      const socketDepth = insert.depth ?? 0.085;
+      const safeInset = Math.max(safeInsetBase, Math.max(socketWidth, socketDepth) / 2 + 0.008);
+      const usableLength = Math.max(tableLength - safeInset * 2, tableLength * 0.2);
+      const usableDepth = Math.max(tableDepth - safeInset * 2, tableDepth * 0.2);
+      const centerX = tableCenterX + usableLength * insert.x_ratio;
+      const centerZ = tableCenterZ + usableDepth * insert.z_ratio;
+
+      // power_socket 先做成贴桌面的矩形面板，后续再补圆角和插孔细节。
+      const socketPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(socketWidth, 0.006, socketDepth),
+        new THREE.MeshStandardMaterial({
+          color: insert.color ?? '#2a2724',
+          roughness: 0.52,
+          metalness: 0.1,
+        }),
+      );
+      socketPanel.position.set(centerX, topSurfaceY + 0.003, centerZ);
+      group.add(socketPanel);
+      continue;
+    }
+
+    if (insert.kind === 'tablet_slot') {
+      const slotLength = insert.length ?? insert.width ?? 0.24;
+      const slotDepth = insert.depth ?? 0.018;
+      const slotRotation = insert.rotation ?? 0;
+      const safeInset = Math.max(safeInsetBase, Math.max(slotLength, slotDepth) / 2 + 0.008);
+      const usableLength = Math.max(tableLength - safeInset * 2, tableLength * 0.2);
+      const usableDepth = Math.max(tableDepth - safeInset * 2, tableDepth * 0.2);
+      const centerX = tableCenterX + usableLength * insert.x_ratio;
+      const centerZ = tableCenterZ + usableDepth * insert.z_ratio;
+
+      // tablet_slot 先做成细长槽位标记：深色底槽 + 两侧浅边。
+      const slotGroup = new THREE.Group();
+      slotGroup.position.set(centerX, topSurfaceY + 0.0018, centerZ);
+      slotGroup.rotation.y = slotRotation;
+
+      const slotBody = new THREE.Mesh(
+        createRoundedSlotGeometry(slotLength, slotDepth, 0.005),
+        new THREE.MeshStandardMaterial({
+          color: insert.color ?? '#2f2b27',
+          roughness: 0.6,
+          metalness: 0.06,
+        }),
+      );
+      slotGroup.add(slotBody);
+
+      const lipMaterial = new THREE.MeshStandardMaterial({
+        color: '#4a433c',
+        roughness: 0.48,
+        metalness: 0.04,
+      });
+      const lipWidth = 0.003;
+      const halfDepth = slotDepth / 2;
+
+      const nearLip = new THREE.Mesh(
+        new THREE.BoxGeometry(slotLength, 0.003, lipWidth),
+        lipMaterial,
+      );
+      nearLip.position.set(0, 0.002, -halfDepth);
+      slotGroup.add(nearLip);
+
+      const farLip = new THREE.Mesh(
+        new THREE.BoxGeometry(slotLength, 0.003, lipWidth),
+        lipMaterial,
+      );
+      farLip.position.set(0, 0.002, halfDepth);
+      slotGroup.add(farLip);
+
+      group.add(slotGroup);
+      continue;
+    }
+
+    if (insert.kind === 'cup_holder') {
+      const radius = insert.radius ?? 0.04;
+      const safeInset = Math.max(safeInsetBase, radius + 0.01);
+      const usableLength = Math.max(tableLength - safeInset * 2, tableLength * 0.2);
+      const usableDepth = Math.max(tableDepth - safeInset * 2, tableDepth * 0.2);
+      const centerX = tableCenterX + usableLength * insert.x_ratio;
+      const centerZ = tableCenterZ + usableDepth * insert.z_ratio;
+
+      // cup_holder 先做成杯孔压圈的视觉件：外圈加内凹深色圆盘。
+      const holderGroup = new THREE.Group();
+      holderGroup.position.set(centerX, topSurfaceY + 0.0015, centerZ);
+
+      const outerRing = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, 0.004, 48),
+        new THREE.MeshStandardMaterial({
+          color: '#4b443d',
+          roughness: 0.5,
+          metalness: 0.08,
+        }),
+      );
+      holderGroup.add(outerRing);
+
+      const innerDisk = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 0.76, radius * 0.76, 0.0025, 48),
+        new THREE.MeshStandardMaterial({
+          color: insert.color ?? '#25211d',
+          roughness: 0.62,
+          metalness: 0.04,
+        }),
+      );
+      innerDisk.position.y = -0.0012;
+      holderGroup.add(innerDisk);
+
+      group.add(holderGroup);
+    }
+  }
+
+  return group;
+};
+
 const TableCanvas = forwardRef<TableCanvasHandle, {
-  params: OrdinaryTableParams;
+  params: TableParams;
   material: Material;
   preciseModelData: PreciseModelData | null;
 }>(({
@@ -542,6 +1077,9 @@ const TableCanvas = forwardRef<TableCanvasHandle, {
 
     const center = bbox.getCenter(new THREE.Vector3());
     group.position.set(-center.x, -bbox.min.y, -center.z);
+
+    // 定制层直接贴主体 mesh 的实际桌面顶面，避免参数语义和模型高度不一致。
+    group.add(createDesktopCustomizationLayer(params, bbox));
     scene.add(group);
     preciseMeshGroupRef.current = group;
 
@@ -556,9 +1094,14 @@ const TableCanvas = forwardRef<TableCanvasHandle, {
       });
       preciseMeshGroupRef.current = null;
     };
-  }, [material, params.length, params.width, preciseModelData]);
+  }, [material, params.length, params.width, params.enable_desktop_customization, params.desktop_customization, preciseModelData]);
 
-  return <div ref={containerRef} className="h-full w-full bg-[#faf6ef]" />;
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full bg-[radial-gradient(circle_at_50%_45%,rgba(141,152,167,0.14),rgba(250,246,239,0)_42%),#faf6ef]"
+    />
+  );
 });
 
 const CustomSlider = ({
@@ -579,37 +1122,55 @@ const CustomSlider = ({
   unit: string;
   displayMul?: number;
   onChange: (value: number) => void;
-}) => (
-  <div className="flex flex-col gap-3">
-    <div className="flex items-end justify-between gap-4">
-      <span className="text-ui-label-control text-[#a79a8a]">{label}</span>
-      <div className="flex items-end gap-2">
-        <span className="text-ui-value-control text-[#6b4a3a]">{formatSliderValue(value, displayMul)}</span>
-        <span className="mb-[3px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#8f867a]">{unit}</span>
+}) => {
+  const percent = ((value - min) / (max - min)) * 100;
+
+  return (
+    <div className="group flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-4">
+        <span className="text-ui-label-control text-[#a79a8a] transition-colors group-hover:text-[#42241C]">
+          {label}
+        </span>
+        <div className="flex items-end gap-2">
+          <span className="text-ui-value-control text-[#6b4a3a] transition-transform duration-150 group-hover:scale-[1.04]">
+            {formatSliderValue(value, displayMul)}
+          </span>
+          <span className="mb-[3px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#8f867a]">
+            {unit}
+          </span>
+        </div>
+      </div>
+
+      <div className="relative flex h-4 w-full items-center">
+        <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#42241C]/75" />
+        <div
+          className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-[#D43A2F]"
+          style={{ width: `${percent}%` }}
+        />
+
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+        />
+
+        <div
+          className="pointer-events-none absolute top-1/2 h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-[#D43A2F] transition-all duration-150 group-hover:h-[13px] group-hover:shadow-[0_0_0_2px_rgba(212,58,47,0.10)]"
+          style={{ left: `calc(${percent}% - 1px)` }}
+        />
+      </div>
+
+      <div className="flex justify-between font-mono text-[7px] uppercase tracking-[0.12em] text-[#b0a698]">
+        <span>{formatSliderValue(min, displayMul)}</span>
+        <span>{formatSliderValue(max, displayMul)}</span>
       </div>
     </div>
-    <div className="relative flex h-4 w-full items-center">
-      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#42241C]" />
-      <div
-        className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-[#e63b2e]"
-        style={{ width: `${((value - min) / (max - min)) * 100}%` }}
-      />
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-      />
-      <div
-        className="absolute h-[7px] w-[7px] rounded-full bg-[#e63b2e] pointer-events-none"
-        style={{ left: `calc(${((value - min) / (max - min)) * 100}% - 3.5px)` }}
-      />
-    </div>
-  </div>
-);
+  );
+};
 
 const MaterialCard = ({
   active,
@@ -666,14 +1227,21 @@ const BottomMetric = ({ label, value, hint, accent = false }: { label: string; v
   </div>
 );
 
+const formatStructureLevel = (level: StructureAssessment['structure_level'] | undefined) => {
+  if (level === 'high') return '高';
+  if (level === 'medium') return '中';
+  if (level === 'low') return '低';
+  return '—';
+};
+
 export default function App() {
-  const [params, setParams] = useState<OrdinaryTableParams>(ORDINARY_DEFAULTS);
+  const [params, setParams] = useState<TableParams>(DEFAULT_TABLE_PARAMS);
   const [material, setMaterial] = useState<Material>('blackwalnut');
   const [leftTab, setLeftTab] = useState<LeftTab>('dimensions');
   const [activeTab, setActiveTab] = useState<BottomTab>('design');
   const [preciseModelData, setPreciseModelData] = useState<PreciseModelData | null>(null);
   const [quote, setQuote] = useState<QuoteData | null>(null);
-  const [isQuoteLoading, setIsQuoteLoading] = useState(false);
+  const [structureAssessment, setStructureAssessment] = useState<StructureAssessment | null>(null);
   const [isExportingPreciseModel, setIsExportingPreciseModel] = useState(false);
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [inputValue, setInputValue] = useState('');
@@ -682,9 +1250,12 @@ export default function App() {
   const [hudVisible, setHudVisible] = useState(false);
   const [hudExiting, setHudExiting] = useState(false);
   const [hudHovered, setHudHovered] = useState(false);
+  const [variantCards, setVariantCards] = useState<VariantCardData[]>([]);
+  const [previewVariantId, setPreviewVariantId] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [isGeneratingVariants, setIsGeneratingVariants] = useState(false);
   const tableCanvasRef = useRef<TableCanvasHandle | null>(null);
   const computeRequestIdRef = useRef(0);
-  const quoteRequestIdRef = useRef(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const hudScrollRef = useRef<HTMLDivElement>(null);
 
@@ -757,6 +1328,8 @@ export default function App() {
   }, [hudHovered, hudVisible, hudItems]);
 
   const updateParam = (key: keyof OrdinaryTableParams, value: number) => {
+    setPreviewVariantId(null);
+    setSelectedVariantId(null);
     setParams((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -767,15 +1340,19 @@ export default function App() {
     setHudVisible(true);
   };
 
-  const requestPreciseModel = async (nextParams: OrdinaryTableParams, signal?: AbortSignal) => {
+  const requestPreciseModel = async (nextParams: TableParams, signal?: AbortSignal) => {
     try {
+      const baseParams = extractBaseTableParams(nextParams);
       const response = await fetch(buildApiUrl('/api/compute'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         signal,
-        body: JSON.stringify(buildComputePayload(nextParams)),
+        body: JSON.stringify({
+          ...buildComputePayload(baseParams),
+          material,
+        }),
       });
 
       if (!response.ok) {
@@ -783,7 +1360,7 @@ export default function App() {
       }
 
       const data = await response.json();
-      return await parsePreciseMeshFromComputeResponse(data);
+      return await parseComputeApiResponse(data as ComputeApiResponse);
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         return null;
@@ -793,24 +1370,31 @@ export default function App() {
     }
   };
 
-  const requestQuote = async (nextParams: OrdinaryTableParams, nextMaterial: Material, signal?: AbortSignal) => {
-    const response = await fetch(buildApiUrl('/api/quote'), {
+  const requestVariants = async (prompt: string, baseParams: TableParams, variantCount?: number) => {
+    const baseTableParams = extractBaseTableParams(baseParams);
+    const response = await fetch(buildApiUrl('/api/generate-variants'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      signal,
       body: JSON.stringify({
-        ...buildComputePayload(nextParams),
-        material: nextMaterial,
+        prompt,
+        baseParams: baseTableParams,
+        material,
+        variantCount,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Quote request failed with status ${response.status}`);
+      throw new Error(`Variant request failed with status ${response.status}`);
     }
 
-    return (await response.json()) as QuoteData;
+    const data = (await response.json()) as GenerateVariantsApiResponse;
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to generate variants');
+    }
+
+    return data;
   };
 
   const handleExportPreciseModel = async () => {
@@ -820,9 +1404,11 @@ export default function App() {
     const requestId = ++computeRequestIdRef.current;
 
     try {
-      const modelData = await requestPreciseModel(params);
-      if (modelData && computeRequestIdRef.current === requestId) {
-        setPreciseModelData(modelData);
+      const result = await requestPreciseModel(params);
+      if (result && computeRequestIdRef.current === requestId) {
+        setPreciseModelData(result.model);
+        setQuote(result.quote);
+        setStructureAssessment(result.structureAssessment);
       }
     } finally {
       if (computeRequestIdRef.current === requestId) {
@@ -836,9 +1422,11 @@ export default function App() {
     const requestId = ++computeRequestIdRef.current;
     const timer = window.setTimeout(async () => {
       setIsExportingPreciseModel(true);
-      const modelData = await requestPreciseModel(params, controller.signal);
-      if (!controller.signal.aborted && modelData && computeRequestIdRef.current === requestId) {
-        setPreciseModelData(modelData);
+      const result = await requestPreciseModel(params, controller.signal);
+      if (!controller.signal.aborted && result && computeRequestIdRef.current === requestId) {
+        setPreciseModelData(result.model);
+        setQuote(result.quote);
+        setStructureAssessment(result.structureAssessment);
       }
       if (!controller.signal.aborted && computeRequestIdRef.current === requestId) {
         setIsExportingPreciseModel(false);
@@ -849,34 +1437,62 @@ export default function App() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [params]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const requestId = ++quoteRequestIdRef.current;
-    const timer = window.setTimeout(async () => {
-      setIsQuoteLoading(true);
-      try {
-        const quoteResult = await requestQuote(params, material, controller.signal);
-        if (!controller.signal.aborted && quoteRequestIdRef.current === requestId) {
-          setQuote(quoteResult);
-        }
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Quote request failed:', error);
-        }
-      } finally {
-        if (!controller.signal.aborted && quoteRequestIdRef.current === requestId) {
-          setIsQuoteLoading(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
   }, [material, params]);
+
+  const handlePreviewVariant = (variantId: string) => {
+    setPreviewVariantId(variantId);
+  };
+
+  const handleReturnToCurrentScheme = () => {
+    setPreviewVariantId(null);
+  };
+
+  const handleUseVariant = (variant: VariantCardData) => {
+    setPreviewVariantId(null);
+    setSelectedVariantId(variant.id);
+    // 候选方案只覆盖主体桌体参数，保留前端侧的定制开关和定制配置。
+    setParams((prev) => ({
+      ...prev,
+      ...variant.params,
+    }));
+    if (variant.model) {
+      setPreciseModelData(variant.model);
+    }
+    if (variant.quote) {
+      setQuote(variant.quote);
+    }
+    if (variant.structureAssessment) {
+      setStructureAssessment(variant.structureAssessment);
+    }
+  };
+
+  const handleGenerateVariants = async (prompt: string, variantCount?: number) => {
+    if (!prompt || isGeneratingVariants) return;
+    setIsGeneratingVariants(true);
+    try {
+      const response = await requestVariants(prompt, params, variantCount);
+      const parsedVariants = await parseVariantApiResponse(response);
+      setVariantCards(parsedVariants);
+      setPreviewVariantId(null);
+      setSelectedVariantId(null);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: response.message || '我整理了几套可直接比较的方案。',
+          variants: parsedVariants,
+        },
+      ]);
+    } catch (error) {
+      console.error('Variant generation error:', error);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: '生成方案时出现问题，请稍后再试。' },
+      ]);
+    } finally {
+      setIsGeneratingVariants(false);
+    }
+  };
 
   const handleSendMessage = async () => {
     const userMessage = inputValue.trim();
@@ -893,7 +1509,7 @@ export default function App() {
         },
         body: JSON.stringify({
           messages: [...messages, { role: 'user', content: userMessage }],
-          currentParams: params,
+          currentParams: extractBaseTableParams(params),
         }),
       });
 
@@ -901,10 +1517,30 @@ export default function App() {
         throw new Error('Network response was not ok');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as ChatApiResponse;
       console.debug('Chat API raw response:', data);
       console.debug('LLM raw payload:', data.debugRaw);
       const functionCalls = data.functionCalls;
+
+      if (data.mode === 'variants') {
+        const parsedVariants = await parseVariantApiResponse({
+          success: true,
+          message: data.text,
+          variants: data.variants,
+        });
+        setVariantCards(parsedVariants);
+        setPreviewVariantId(null);
+        setSelectedVariantId(null);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: data.text || '我整理了几套方案，你可以直接比较。',
+            variants: parsedVariants,
+          },
+        ]);
+        return;
+      }
 
       if (functionCalls) {
         let appliedParamUpdate = false;
@@ -919,8 +1555,9 @@ export default function App() {
             appliedParamUpdate = true;
           }
         }
-        if (data.text?.trim()) {
-          setMessages((prev) => [...prev, { role: 'assistant', content: data.text }]);
+        const assistantText = data.text?.trim();
+        if (assistantText) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: assistantText }]);
         } else if (appliedParamUpdate) {
           setMessages((prev) => [
             ...prev,
@@ -945,8 +1582,10 @@ export default function App() {
   };
 
   const currentTabSection = LEFT_TABS.find((tab) => tab.id === leftTab) ?? LEFT_TABS[0];
-  const currentPrice = quote ? '¥' + quote.totalPrice.toLocaleString() : isQuoteLoading ? '...' : '—';
-  const leadTime = quote ? quote.leadTime : isQuoteLoading ? 'QUOTING' : '—';
+  const currentPrice = quote ? `¥${quote.totalPrice.toLocaleString()}` : '—';
+  const leadTime = quote ? quote.leadTime : '—';
+  const previewVariant = previewVariantId ? variantCards.find((variant) => variant.id === previewVariantId) ?? null : null;
+  const displayedPreciseModelData = previewVariant?.model ?? preciseModelData;
 
   return (
     <div className="min-h-screen bg-[#faf6ef] text-[#2e2823] selection:bg-[#e63b2e]/20 lg:h-screen lg:overflow-hidden">
@@ -1020,7 +1659,7 @@ export default function App() {
 
         <main className="relative min-h-[420px] border-b border-[#42241C] lg:min-h-0 lg:border-b-0">
           <div className="absolute inset-0 z-0">
-            <TableCanvas ref={tableCanvasRef} params={params} material={material} preciseModelData={preciseModelData} />
+            <TableCanvas ref={tableCanvasRef} params={params} material={material} preciseModelData={displayedPreciseModelData} />
           </div>
 
           {hudVisible && hudItems.length > 0 ? (
@@ -1059,7 +1698,7 @@ export default function App() {
               3D PREVIEW
             </div>
             <div className="absolute right-0 top-[-18px] font-mono text-[8px] uppercase tracking-[0.16em] text-[#e63b2e]">
-              {preciseModelData ? 'RHINO MODEL SYNCED' : 'LIVE PARAMETRIC VIEW'}
+              {previewVariant ? `PREVIEWING ${previewVariant.name.toUpperCase()}` : preciseModelData ? 'RHINO MODEL SYNCED' : 'LIVE PARAMETRIC VIEW'}
             </div>
             <div className="absolute left-0 top-0 h-[14px] w-[14px] border-l border-t border-[#8f867a]" />
             <div className="absolute right-0 top-0 h-[14px] w-[14px] border-r border-t border-[#8f867a]" />
@@ -1067,25 +1706,46 @@ export default function App() {
             <div className="absolute bottom-0 right-0 h-[14px] w-[14px] border-b border-r border-[#8f867a]" />
           </div>
 
-          {activeTab === 'cart' ? (
-            <div className="absolute inset-x-8 top-24 z-20 max-w-[320px] border border-[#42241C] bg-[#f7f2ea]/95 p-5 backdrop-blur-sm">
-              <div className="text-heading-panel text-[#42241C]">CONFIG SUMMARY</div>
-              <p className="mt-3 font-serif text-[12px] leading-6 text-[#9d9588]">
-                Current pricing, lead time, and structured quote details are ready for downstream order flow.
-              </p>
-              {quote?.breakdown?.length ? (
-                <div className="mt-4 space-y-2 border-t border-[#42241C] pt-4">
-                  {quote.breakdown.map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex items-center justify-between font-mono text-[8px] uppercase tracking-[0.12em] text-[#7d766b]"
-                    >
-                      <span>{item.label}</span>
-                      <span className="text-[#42241C]">¥{item.value.toLocaleString()}</span>
+          {activeTab === 'quote' ? (
+            <div className="absolute inset-0 z-20 bg-[#f7f2ea] px-8 pt-8 pb-8">
+              <div className="h-full overflow-y-auto border border-[#42241C] bg-[#f7f2ea] p-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="text-heading-panel text-[#42241C]">QUOTE SUMMARY</div>
+                  <p className="mt-3 font-serif text-[12px] leading-6 text-[#6d6257]">基于当前参数估算价格与结构表现，方便你快速判断这套桌子的成本区间和使用稳定性。</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#42241C] pt-4">
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#8f867a]">稳定评分</div>
+                      <div className="mt-2 text-[34px] leading-none text-[#42241C]">{structureAssessment?.stability_score ?? '—'}</div>
                     </div>
-                  ))}
-                </div>
-              ) : null}
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#8f867a]">结构等级</div>
+                      <div className="mt-2 text-[22px] text-[#42241C]">{formatStructureLevel(structureAssessment?.structure_level)}</div>
+                    </div>
+                  </div>
+                  {structureAssessment?.risk_tags?.length ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {structureAssessment.risk_tags.map((tag) => (
+                        <span key={tag} className="border border-[#d5c6b6] px-2 py-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#7d766b]">{STRUCTURE_RISK_LABELS[tag] ?? tag}</span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {structureAssessment?.recommendations?.length ? (
+                    <div className="mt-4 space-y-2 border-t border-[#42241C] pt-4">
+                      {structureAssessment.recommendations.map((item, index) => (
+                        <p key={`${item}-${index}`} className="font-serif text-[12px] leading-6 text-[#6d6257]">{item}</p>
+                      ))}
+                    </div>
+                  ) : null}
+                  {quote?.breakdown?.length ? (
+                    <div className="mt-4 space-y-2 border-t border-[#42241C] pt-4">
+                      {quote.breakdown.map((item) => (
+                        <div key={item.label} className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.08em] text-[#7d766b]">
+                          <span>{QUOTE_BREAKDOWN_LABELS[item.label] ?? item.label}</span>
+                          <span className="text-[11px] text-[#42241C]">¥{item.value.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+              </div>
             </div>
           ) : null}
         </main>
@@ -1100,13 +1760,7 @@ export default function App() {
               {messages.map((message, index) => {
                 const isAssistant = message.role === 'assistant';
                 return (
-                  <div
-                    key={`${message.role}-${index}`}
-                    className={cn(
-                    'flex w-full flex-col gap-2.5',
-                    isAssistant ? 'items-start' : 'items-start',
-                    )}
-                  >
+                  <div key={`${message.role}-${index}`} className={cn('flex w-full flex-col gap-1.5', isAssistant ? 'items-start' : 'items-end')}>
                     <div
                       className={cn(
                         'chat-note-label',
@@ -1117,14 +1771,82 @@ export default function App() {
                     </div>
                     <div
                       className={cn(
-                          'chat-note-block w-full',
-                          isAssistant
-                            ? 'text-[#332b25]'
-                          : 'bg-[#f0e7dc] px-5 py-4 text-[#5b3728]',
+                        'chat-note-block max-w-[88%] rounded-[8px] px-4 py-3 text-[13px] leading-5 shadow-[0_10px_30px_rgba(66,36,28,0.05)]',
+                        isAssistant
+                          ? 'w-full rounded-l-none border border-[#e7ddd1] border-l-[3px] border-l-[#D43A2F] bg-[#fffdf9] text-[#332b25]'
+                          : 'ml-auto border border-[#d8cbbd] bg-[#f0e7dc] text-[#5b3728]',
                       )}
                     >
                       {message.content}
                     </div>
+                    {isAssistant && message.variants?.length ? (
+                      <div className="mt-1 flex w-full max-w-[88%] flex-col gap-2 rounded-[8px] border border-[#eadfce] bg-[#f8f2e9] px-3 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#8f867a]">Schemes</div>
+                          {previewVariantId ? (
+                            <button
+                              type="button"
+                              onClick={handleReturnToCurrentScheme}
+                              className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#7b4b38] transition-colors hover:text-[#42241C]"
+                            >
+                              Return
+                            </button>
+                          ) : null}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {message.variants.map((variant) => {
+                            const isPreview = previewVariantId === variant.id;
+                            const isSelected = selectedVariantId === variant.id;
+                            return (
+                              <div
+                                key={variant.id}
+                                className={cn(
+                                  'rounded-[6px] border px-3 py-2',
+                                  isPreview || isSelected ? 'border-[#42241C] bg-[#fffaf3]' : 'border-[#e2d6c7] bg-[#fcf8f2]',
+                                )}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="text-[12px] leading-5 text-[#42241C]">{variant.name}</div>
+                                    <p className="mt-0.5 text-[11px] leading-5 text-[#6d6257]">{variant.consumer_summary}</p>
+                                  </div>
+                                  {!variant.success ? (
+                                    <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-[#b04f3a]">Fail</span>
+                                  ) : null}
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-4 text-[#7d766b]">
+                                  <span>¥ {variant.quote ? variant.quote.totalPrice.toLocaleString() : '—'}</span>
+                                  <span>稳 {variant.scores.stability}</span>
+                                  <span>轻 {variant.scores.lightness}</span>
+                                  <span>质 {variant.scores.premium_feel}</span>
+                                </div>
+                                <div className="mt-2 flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={!variant.success || !variant.model}
+                                    onClick={() => handlePreviewVariant(variant.id)}
+                                    className="border border-[#cdb9a5] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#5b3728] transition-colors hover:bg-[#efe4d7] disabled:opacity-40"
+                                  >
+                                    Preview
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={!variant.success}
+                                    onClick={() => handleUseVariant(variant)}
+                                    className="border border-[#42241C] bg-[#42241C] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#faf6ef] transition-colors hover:bg-[#5a3022] disabled:opacity-40"
+                                  >
+                                    Use
+                                  </button>
+                                </div>
+                                {!variant.success && variant.error ? (
+                                  <p className="mt-1 text-[10px] leading-4 text-[#b04f3a]">{variant.error}</p>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -1160,7 +1882,7 @@ export default function App() {
               />
               <button
                 type="submit"
-                disabled={isTyping || !inputValue.trim()}
+                disabled={isTyping || isGeneratingVariants || !inputValue.trim()}
                 className="absolute right-0 top-0 flex h-full w-[54px] items-center justify-center border-l border-[#42241C] text-[#b8aea1] transition-colors duration-150 hover:bg-[#f1e7db] hover:text-[#42241C] active:bg-[#e8dccd] disabled:opacity-40"
               >
                 <Send className="h-[14px] w-[14px]" strokeWidth={1.8} />

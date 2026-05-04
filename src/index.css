@@ -20,7 +20,7 @@
   --color-panel-hover: #efe8de;
   --color-border-main: #42241c;
   --color-border-subtle: #d7c8b5;
-  --color-accent: #e63b2e;
+  --color-accent: #D43A2F;
   --color-text-main: #2e2823;
   --color-text-secondary: #8f867a;
   --color-text-muted: #a9a095;
@@ -29,7 +29,7 @@
   --color-user-bubble-text: #5b3728;
 
   /* Text Role Sizes */
-  --size-brand-title: 58px;
+  --size-brand-title: 48px;
   --size-brand-subtitle: 10px;
   --size-heading-panel: 20px;
   --size-heading-assistant: 24px;
@@ -55,6 +55,13 @@
   --tracking-wide: 0.12em;
   --tracking-widest: 0.18em;
   --tracking-brand: 0.25em;
+
+  --color-paper-warm: #f1e7db;
+  --color-paper-light: #fffdf9;
+  --color-soft-clay: #d9b7a3;
+  --color-soft-sage: #8f9a8b;
+  --color-soft-bluegray: #8d98a7;
+  --color-line-soft: #d8cbbd;
 }
 
 @layer components {
@@ -176,12 +183,13 @@
   }
   .chat-note-block {
     font-family: var(--font-serif);
-    font-size: 12px;
-    line-height: 1.95;
+    font-size: 13px;
+    line-height: 2;
+    letter-spacing: 0.02em;
   }
   .chat-input-text {
     font-family: var(--font-serif);
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
