@@ -1,35 +1,35 @@
 # Resonance
 
-An AI-assisted parametric furniture design prototype for customizing desks through natural language and direct parameter editing.
+一个 AI 辅助的参数化家具设计原型，支持通过自然语言和参数调节完成桌具个性化设计。
 
-## Features
+## 核心功能
 
-- Interactive 3D preview and adjustable desk dimensions and geometry.
-- AI-assisted design generation and comparison of alternative configurations.
-- Rhino / Grasshopper integration for precise geometry generation.
-- Estimated pricing, structural complexity, and model export.
+- 桌具尺寸与形态调节、交互式 3D 预览。
+- AI 辅助设计方案生成与多方案对比。
+- 对接 Rhino / Grasshopper，实现精确几何模型生成。
+- 成本与结构复杂度估算、模型导出。
 
-**Tech stack:** React, TypeScript, Vite, Three.js, Express, Rhino.Compute, Grasshopper, Gemini / GitHub Models.
+**技术栈：** React、TypeScript、Vite、Three.js、Express、Rhino.Compute、Grasshopper、Gemini / GitHub Models。
 
-## Run locally
+## 本地运行
 
-Requires Node.js and a compatible Rhino.Compute / Grasshopper endpoint for precise geometry generation.
+需要 Node.js；精确模型生成依赖可用的 Rhino.Compute / Grasshopper 服务。
 
 ```bash
 npm install
 cp .env.example .env.local
 ```
 
-Configure `RHINO_COMPUTE_URL`, `LLM_PROVIDER` and the corresponding API credentials in `.env.local`. Then run:
+在 `.env.local` 中配置 `RHINO_COMPUTE_URL`、`LLM_PROVIDER` 及对应的 API 密钥，然后运行：
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000.
+访问 http://localhost:3000。
 
-The frontend can be built with `npm run build`. Live AI and Rhino features require a running backend; static hosting alone is insufficient.
+使用 `npm run build` 构建前端。AI 和 Rhino 功能依赖后端服务，仅部署静态页面无法完整运行。
 
-## Status
+## 项目说明
 
-Design course prototype for exploring AI-assisted furniture customization. Cost and structural estimates are indicative, not engineering validation.
+设计课程原型，用于探索 AI 辅助家具定制。成本与结构估算仅供设计参考。
